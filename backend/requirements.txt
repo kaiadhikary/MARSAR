@@ -1,0 +1,32 @@
+# Web framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+
+# Ingestion (mempool WebSocket + REST)
+websockets
+aiohttp
+
+# Auth
+python-jose[cryptography]
+passlib[bcrypt]
+
+# Graph / typology engine
+networkx
+
+# ML / risk scoring
+scikit-learn
+xgboost
+joblib
+numpy
+pandas
+
+# Forensic dossier / reports
+weasyprint
+jinja2
+
+# Testing
+pytest
+pytest-asyncio
