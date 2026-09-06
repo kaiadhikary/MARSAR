@@ -12,6 +12,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import alerts, compliance, graph, trace
 from app.core.config import settings
@@ -32,14 +33,25 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
 
-app.include_router(alerts.router, prefix=settings.API_V1_PREFIX)
-app.include_router(compliance.router, prefix=settings.API_V1_PREFIX)
-app.include_router(graph.router, prefix=settings.API_V1_PREFIX)
-app.include_router(trace.router, prefix=settings.API_V1_PREFIX)
+# BACKEND_CORS_ORIGINS was defined in config.py but never wired into the app
+# in either prior version — the frontend would have hit CORS errors the
+# moment it made a real cross-origin request. Wiring it here now.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(alerts.router, prefix=settings.API_V1_STR)
+app.include_router(compliance.router, prefix=settings.API_V1_STR)
+app.include_router(graph.router, prefix=settings.API_V1_STR)
+app.include_router(trace.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": settings.APP_NAME}
+    return {"status": "ok", "app": settings.PROJECT_NAME}

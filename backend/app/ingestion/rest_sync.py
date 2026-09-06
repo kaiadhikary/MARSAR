@@ -37,7 +37,7 @@ class RestSyncClient:
     """Thin async wrapper around the Blockstream Esplora REST API."""
 
     def __init__(self, base_url: str | None = None, session: aiohttp.ClientSession | None = None):
-        self.base_url = (base_url or settings.BLOCKSTREAM_REST_URL).rstrip("/")
+        self.base_url = (base_url or settings.BLOCKSTREAM_API_BASE_URL).rstrip("/")
         self._session = session
         self._owns_session = session is None
 

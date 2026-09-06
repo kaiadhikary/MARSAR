@@ -1,0 +1,146 @@
+=====================================================================
+MARSAR BACKEND — STEP-BY-STEP RUN COMMANDS (backend_merged.zip)
+=====================================================================
+Two ways to run it: OPTION A (plain Python / venv) or OPTION B (Docker).
+Pick one. Both assume you've unzipped backend_merged.zip and are
+sitting one level above the "backend" folder.
+
+There are also TWO separate processes in this project — run them in
+TWO SEPARATE TERMINALS:
+  1) The FastAPI web server (app.main)      -> serves the REST API
+  2) The ingestion worker (run_worker.py)   -> streams live mempool
+     data, clusters it, screens it, and writes to the SQLite DB
+
+The API server alone will start fine, but the alerts/graph/trace
+endpoints will stay empty until the worker (Terminal 2) is also
+running, since the worker is what populates storage.db.
+
+
+---------------------------------------------------------------
+OPTION A — RUN LOCALLY WITH A PYTHON VIRTUAL ENVIRONMENT
+---------------------------------------------------------------
+
+STEP 1. Unzip the project (skip if already unzipped)
+    unzip backend_merged.zip
+    cd backend
+
+STEP 2. Create a virtual environment
+    python3 -m venv venv
+
+STEP 3. Activate the virtual environment
+    # On Windows (cmd):
+    venv\Scripts\activate
+    # On Windows (PowerShell):
+    venv\Scripts\Activate.ps1
+    # On macOS / Linux:
+    source venv/bin/activate
+
+STEP 4. Install dependencies
+    pip install -r requirements.txt
+
+STEP 5. (First run only) Initialize the SQLite database + seed data
+    python -c "from app.db.sqlite_client import init_db, load_seed_data; init_db(); load_seed_data()"
+
+STEP 6. Start the FastAPI server (Terminal 1 — keep this running)
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+STEP 7. Open a SECOND terminal, activate the same venv again, then
+        start the ingestion worker (Terminal 2 — keep this running)
+    cd backend
+    source venv/bin/activate        (or venv\Scripts\activate on Windows)
+    python run_worker.py
+
+STEP 8. Verify the API is up
+    Open in a browser, or run:
+    curl http://localhost:8000/health
+    Expected response: {"status": "ok", "app": "MARSAR - Bitcoin Forensics & AML"}
+
+STEP 9. Watch the worker logs
+    You should start seeing lines like:
+    [INFO] marsar.worker: Connected to mempool WebSocket ...
+    [INFO] marsar.worker: ⚡ [INGESTED & PERSISTED] TX: ...
+    Give it 1–2 minutes to pick up live transactions.
+
+STEP 10. (Optional) Inspect the database while the worker runs
+    python check_db.py              -> lists all tables
+    python check_clusters.py        -> cluster counts/schema
+    python check_transactions.py    -> latest suspicious (CoinJoin) txs
+
+STEP 11. (Optional) Reset stored data if you want a clean slate
+    python reset_db.py              -> clears non-suspicious transactions
+
+STEP 12. To stop everything
+    Press CTRL + C in both terminals (Terminal 1 = API, Terminal 2 = worker)
+    deactivate                       -> exits the virtual environment
+
+
+---------------------------------------------------------------
+OPTION B — RUN WITH DOCKER (API SERVER ONLY)
+---------------------------------------------------------------
+Note: the provided Dockerfile only runs the FastAPI server
+(uvicorn app.main:app). The ingestion worker (run_worker.py) is
+NOT started by the Dockerfile, so you still need Step 5 below to
+get live data — either run it inside the same container or run
+it locally with Option A's Steps 2–4 + 7 in parallel.
+
+STEP 1. Unzip the project
+    unzip backend_merged.zip
+    cd backend
+
+STEP 2. Build the Docker image
+    docker build -t marsar-backend .
+
+STEP 3. Run the API server container
+    docker run -d --name marsar-api -p 8000:8000 marsar-backend
+
+STEP 4. Verify the API is up
+    curl http://localhost:8000/health
+
+STEP 5. Run the ingestion worker inside the SAME container
+        (in a second terminal)
+    docker exec -it marsar-api python run_worker.py
+
+STEP 6. View container logs
+    docker logs -f marsar-api
+
+STEP 7. Stop and remove the container when done
+    docker stop marsar-api
+    docker rm marsar-api
+
+
+---------------------------------------------------------------
+QUICK REFERENCE — ALL COMMANDS IN ORDER (Option A, macOS/Linux)
+---------------------------------------------------------------
+unzip backend_merged.zip
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -c "from app.db.sqlite_client import init_db, load_seed_data; init_db(); load_seed_data()"
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# --- open a second terminal ---
+cd backend
+source venv/bin/activate
+python run_worker.py
+
+
+---------------------------------------------------------------
+TROUBLESHOOTING
+---------------------------------------------------------------
+- "ModuleNotFoundError: No module named 'app'"
+    -> Make sure you're inside the "backend" folder when you run
+       uvicorn/python commands (it must see the "app" package).
+
+- Worker shows repeated "Mempool WS disconnected ... reconnecting"
+    -> Normal on flaky networks; it auto-reconnects with backoff.
+       Persistent failures usually mean no internet access to
+       wss://mempool.space from this machine/network.
+
+- "AttributeError: 'Settings' object has no attribute ..."
+    -> Should not happen in this merged version. If it does, you
+       are likely running the OLD backend.zip / plain backend/
+       folder instead of backend_merged.zip.
+
+- Port 8000 already in use
+    -> Change the port: uvicorn app.main:app --port 8001
+       (and adjust curl/browser URLs accordingly)

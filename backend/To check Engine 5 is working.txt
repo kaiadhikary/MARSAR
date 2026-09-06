@@ -1,0 +1,27 @@
+To check Engine 5 is working (takes 10 seconds)
+cd backend
+python -m pytest tests/ -v
+
+Run this one command. If you see 16 passed at the bottom — Engine 5's math is correct. Done. That's it.
+
+To train the model (takes time + a few commands)
+
+Step 1: Let your worker run for a while first (a few hours), so it collects enough transactions to learn from.
+
+python run_worker.py
+
+Leave it running. Come back later.
+
+Step 2: Once it's collected enough data, run this:
+
+python train_engine5_model.py
+
+This trains the model using the data your worker collected, and saves it automatically.
+
+Step 3: If it says "not enough data" — just let the worker run longer, then try Step 2 again.
+
+Step 4: Once training succeeds, restart your worker:
+
+python run_worker.py
+
+It'll automatically pick up the new model. That's it — model is now active.
