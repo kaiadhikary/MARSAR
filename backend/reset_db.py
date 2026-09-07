@@ -1,40 +1,21 @@
-import sqlite3
+#!/usr/bin/env python3
+"""
+Database Purge Utility.
+Clears transaction, cluster, and alert tables for fresh batch ingestion.
+"""
 
-db_path = "app/db/storage.db"
+from app.db.sqlite_client import reset_database, get_db_connection
 
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
 
-# Count before cleanup
-total_before = cursor.execute(
-    "SELECT COUNT(*) FROM transactions"
-).fetchone()[0]
+def main():
+    print("[*] Resetting MARSAR analytical database tables...")
+    reset_database()
+    conn = get_db_connection()
+    tx_count = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+    alert_count = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+    conn.close()
+    print(f"[+] Database purged. Transactions: {tx_count}, Alerts: {alert_count}")
 
-suspicious_before = cursor.execute(
-    "SELECT COUNT(*) FROM transactions WHERE is_coinjoin = 1"
-).fetchone()[0]
 
-safe_before = cursor.execute(
-    "SELECT COUNT(*) FROM transactions WHERE is_coinjoin = 0"
-).fetchone()[0]
-
-print(f"Transactions before reset: {total_before}")
-print(f"Safe transactions: {safe_before}")
-print(f"Suspicious transactions: {suspicious_before}")
-
-# Delete only safe transactions
-cursor.execute(
-    "DELETE FROM transactions WHERE is_coinjoin = 0"
-)
-
-conn.commit()
-
-# Count after cleanup
-total_after = cursor.execute(
-    "SELECT COUNT(*) FROM transactions"
-).fetchone()[0]
-
-print("\nCleanup completed.")
-print(f"Transactions remaining: {total_after}")
-
-conn.close()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<transactions>
+  <transaction>
+    <txid>tx_ransom_peel_001</txid>
+    <timestamp>1700000000</timestamp>
+    <src_ip>198.51.100.24</src_ip>
+    <dst_ip>104.28.16.5</dst_ip>
+    <src_port>45210</src_port>
+    <dst_port>8333</dst_port>
+    <fee>0.00025</fee>
+    <script_type>p2wpkh</script_type>
+    <geo_country>RU</geo_country>
+    <geo_asn>AS12389 - Rostelecom</geo_asn>
+    <inputs>
+      <input>
+        <address>1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa</address>
+        <amount>2.50000</amount>
+      </input>
+    </inputs>
+    <outputs>
+      <output>
+        <address>addr_peeled_cashout_1</address>
+        <amount>0.15000</amount>
+      </output>
+      <output>
+        <address>addr_peel_change_hop_1</address>
+        <amount>2.34975</amount>
+      </output>
+    </outputs>
+  </transaction>
+  <transaction>
+    <txid>tx_coinjoin_mixer_01</txid>
+    <timestamp>1700002000</timestamp>
+    <src_ip>203.0.113.88</src_ip>
+    <dst_ip>104.28.16.5</dst_ip>
+    <src_port>50122</src_port>
+    <dst_port>8333</dst_port>
+    <fee>0.00040</fee>
+    <script_type>p2sh</script_type>
+    <geo_country>IR</geo_country>
+    <geo_asn>AS58224 - TIC</geo_asn>
+    <inputs>
+      <input><address>addr_mix_in_1</address><amount>0.501</amount></input>
+      <input><address>addr_mix_in_2</address><amount>0.502</amount></input>
+      <input><address>addr_mix_in_3</address><amount>0.501</amount></input>
+      <input><address>addr_mix_in_4</address><amount>0.503</amount></input>
+    </inputs>
+    <outputs>
+      <output><address>addr_clean_out_1</address><amount>0.500</amount></output>
+      <output><address>addr_clean_out_2</address><amount>0.500</amount></output>
+      <output><address>addr_clean_out_3</address><amount>0.500</amount></output>
+      <output><address>addr_clean_out_4</address><amount>0.500</amount></output>
+    </outputs>
+  </transaction>
+  <transaction>
+    <txid>tx_benign_payment_01</txid>
+    <timestamp>1700004000</timestamp>
+    <src_ip>192.0.2.14</src_ip>
+    <dst_ip>104.28.16.5</dst_ip>
+    <src_port>39412</src_port>
+    <dst_port>8333</dst_port>
+    <fee>0.00005</fee>
+    <script_type>p2wpkh</script_type>
+    <geo_country>US</geo_country>
+    <geo_asn>AS15169 - Google LLC</geo_asn>
+    <inputs>
+      <input><address>addr_user_wallet_1</address><amount>0.85000</amount></input>
+    </inputs>
+    <outputs>
+      <output><address>addr_merchant_wallet_1</address><amount>0.30000</amount></output>
+      <output><address>addr_user_change_1</address><amount>0.54995</amount></output>
+    </outputs>
+  </transaction>
+</transactions>

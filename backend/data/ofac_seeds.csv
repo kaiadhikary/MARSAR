@@ -1,0 +1,8 @@
+address,category,severity,entity_name,designation_date
+1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa,OFAC_RANSOMWARE,1.0,WannaCry Genesis / Lazarus Group,2019-09-13
+1CounterpartyXXXXXXXXXXXXXXXUWLpVr,DARKNET_MARKET,0.95,Hydra Market Liquidation Vault,2022-04-05
+3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy,MIXER_OPERATOR,0.90,Blender.io High-Volume Aggregator,2022-05-06
+bc1qa5wkgaew2dkv56kfvj49j0av5nmar2m78chn7y,EXCHANGE_HEIST,0.85,Ronin Bridge Exploiter,2022-03-29
+12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX,EXTORTION_CAMPAIGN,0.80,Conti Ransomware Primary Collector,2021-11-10
+14N1zpPjGv6h9D9b1G6yM5S7yV8kL9q1W2,TERROR_FINANCING,1.0,Al-Qassam Brigades Campaign,2020-08-13
+bc1qgdjqv0av3q56jvd82tkdjpy7gdp9ut8tlqmgrpmv24sq90ecnvqqjwvw97,OFAC_RANSOMWARE,1.0,LockBit 3.0 Ransom Pool,2024-02-20

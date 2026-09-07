@@ -1,282 +1,167 @@
-"""
-Entity Clustering & Change Address Detection Engine.
+import json
+import numpy as np
+from typing import Dict, Set, List
+from sklearn.decomposition import TruncatedSVD
+from app.db.sqlite_client import get_db_connection
 
-Two responsibilities, per the spec:
-
-1. Common Input Ownership Heuristic (CIOH) — when a transaction spends
-   multiple input addresses in one signature payload, all of those input
-   addresses are proven to be controlled by the same entity. We union them
-   into one cluster using Disjoint-Set Union (Union-Find) with path
-   compression + union by rank, giving amortized O(α(N)) merges.
-
-2. CoinJoin pre-filter — if a transaction's outputs contain several
-   identical-value amounts (the fingerprint of a CoinJoin/mixing tx), CIOH
-   is *skipped* for that transaction. Applying CIOH to a CoinJoin would
-   incorrectly merge unrelated participants into one false cluster —
-   exactly the kind of poisoning this filter exists to prevent.
-
-Change-address identification is a separate, softer heuristic (it doesn't
-affect clustering correctness, just annotates which output is "change"
-returning to the sender vs. the actual payment).
-"""
-from __future__ import annotations
-
-from collections import Counter, defaultdict
-from dataclasses import dataclass, field
-
-
-# --------------------------------------------------------------------------
-# Disjoint-Set Union (Union-Find)
-# --------------------------------------------------------------------------
 
 class DisjointSetUnion:
-    """
-    Union-Find over arbitrary hashable items (Bitcoin addresses, here).
-    Path compression on find() + union by rank gives amortized O(α(N))
-    per operation, so clustering millions of addresses stays cheap.
-    """
-
-    def __init__(self) -> None:
-        self._parent: dict[str, str] = {}
-        self._rank: dict[str, int] = {}
-
-    def _make_set(self, item: str) -> None:
-        if item not in self._parent:
-            self._parent[item] = item
-            self._rank[item] = 0
+    def __init__(self):
+        self.parent: Dict[str, str] = {}
+        self.rank: Dict[str, int] = {}
 
     def find(self, item: str) -> str:
-        self._make_set(item)
-        # Path compression (iterative, to avoid recursion depth issues on
-        # long chains).
-        root = item
-        while self._parent[root] != root:
-            root = self._parent[root]
-        while self._parent[item] != root:
-            self._parent[item], item = root, self._parent[item]
-        return root
+        if item not in self.parent:
+            self.parent[item] = item
+            self.rank[item] = 0
+            return item
+        if self.parent[item] != item:
+            self.parent[item] = self.find(self.parent[item])
+        return self.parent[item]
 
-    def union(self, a: str, b: str) -> None:
-        root_a, root_b = self.find(a), self.find(b)
-        if root_a == root_b:
-            return
-        # Union by rank: attach the shorter tree under the taller one.
-        if self._rank[root_a] < self._rank[root_b]:
-            root_a, root_b = root_b, root_a
-        self._parent[root_b] = root_a
-        if self._rank[root_a] == self._rank[root_b]:
-            self._rank[root_a] += 1
-
-    def connected(self, a: str, b: str) -> bool:
-        return self.find(a) == self.find(b)
-
-    def clusters(self) -> dict[str, list[str]]:
-        """Return {cluster_root: [members]} for every address seen so far."""
-        groups: dict[str, list[str]] = defaultdict(list)
-        for item in self._parent:
-            groups[self.find(item)].append(item)
-        return dict(groups)
-
-    def cluster_size(self, item: str) -> int:
-        root = self.find(item)
-        return sum(1 for i in self._parent if self.find(i) == root)
+    def union(self, item1: str, item2: str):
+        root1 = self.find(item1)
+        root2 = self.find(item2)
+        if root1 != root2:
+            if self.rank[root1] < self.rank[root2]:
+                self.parent[root1] = root2
+            elif self.rank[root1] > self.rank[root2]:
+                self.parent[root2] = root1
+            else:
+                self.parent[root2] = root1
+                self.rank[root1] += 1
 
 
-# --------------------------------------------------------------------------
-# CoinJoin pre-filter
-# --------------------------------------------------------------------------
-
-# If this many (or more) outputs share the exact same satoshi value, treat
-# the tx as a probable CoinJoin/mixing transaction and skip CIOH.
-COINJOIN_MIN_IDENTICAL_OUTPUTS = 5
-
-
-def is_probable_coinjoin(tx: dict) -> bool:
+class EntityClusterEngine:
     """
-    Detect the CoinJoin fingerprint: several outputs of identical value
-    (e.g. 10 outputs of exactly 0.1 BTC), which signals multiple
-    independent participants pooling inputs into one mixing transaction.
+    NTRO Focus Area 1: Entity Clustering.
+    Groups wallets using:
+    1. Common-Input-Ownership Heuristic (CIOH)
+    2. Network IP broadcast co-location
+    3. Graph Embeddings (Spectral Adjacency Embeddings on co-interaction graph)
     """
-    outputs = tx.get("outputs", [])
-    if len(outputs) < COINJOIN_MIN_IDENTICAL_OUTPUTS:
-        return False
-
-    value_counts = Counter(o["value_sats"] for o in outputs if o.get("value_sats"))
-    if not value_counts:
-        return False
-
-    most_common_value, count = value_counts.most_common(1)[0]
-    return count >= COINJOIN_MIN_IDENTICAL_OUTPUTS
-
-
-# --------------------------------------------------------------------------
-# Change address detection
-# --------------------------------------------------------------------------
-
-def identify_change_output(tx: dict) -> int | None:
-    """
-    Best-effort heuristic for which output (by vout_index) is change
-    returning to the sender, rather than the actual payment. Returns None
-    if no output looks confidently like change (e.g. CoinJoins, or txs
-    with only one output).
-
-    Heuristics applied, in order of confidence:
-      1. Script-type matching: an output whose script type matches an
-         input's script type is more likely to be a same-wallet change
-         address (senders' wallets are usually address-type-consistent).
-      2. Round-number heuristic: a payment amount is more often a "round"
-         figure (in sats or fiat-equivalent terms) than the leftover
-         change; the non-round output is more likely to be change when
-         exactly one candidate remains after rule 1.
-      3. Single-output fallback: with exactly two outputs and no other
-         signal, the smaller output is a weak default guess for change
-         (peeling-chain behavior: small payment, large change) — flagged
-         as low confidence by the caller.
-    """
-    inputs = tx.get("inputs", [])
-    outputs = tx.get("outputs", [])
-
-    if len(outputs) < 2 or is_probable_coinjoin(tx):
-        return None
-
-    input_script_types = {
-        _infer_script_type_from_address(i.get("address"))
-        for i in inputs
-        if i.get("address")
-    }
-    input_script_types.discard(None)
-
-    # Rule 1: script-type match against inputs.
-    candidates = [
-        o for o in outputs
-        if _infer_script_type_from_address(o.get("address")) in input_script_types
-    ]
-    if len(candidates) == 1:
-        return candidates[0]["vout_index"]
-
-    # Rule 2: among remaining candidates (or all outputs if rule 1 was
-    # inconclusive), prefer the one with a "less round" value.
-    pool = candidates if candidates else outputs
-    non_round = [o for o in pool if not _is_round_sats(o.get("value_sats", 0))]
-    if len(non_round) == 1:
-        return non_round[0]["vout_index"]
-
-    # Rule 3: two-output fallback — smaller output as weak default.
-    if len(outputs) == 2:
-        smaller = min(outputs, key=lambda o: o.get("value_sats", 0))
-        return smaller["vout_index"]
-
-    return None
-
-
-def _infer_script_type_from_address(address: str | None) -> str | None:
-    """Cheap script-type inference from address prefix (mainnet only)."""
-    if not address:
-        return None
-    if address.startswith("bc1p"):
-        return "p2tr"          # Taproot
-    if address.startswith("bc1"):
-        return "p2wpkh_or_wsh"  # Native SegWit
-    if address.startswith("3"):
-        return "p2sh"           # Wrapped SegWit / multisig
-    if address.startswith("1"):
-        return "p2pkh"          # Legacy
-    return None
-
-
-def _is_round_sats(value_sats: int) -> bool:
-    """A crude 'looks like a round payment amount' check."""
-    if value_sats <= 0:
-        return False
-    # Round to the nearest 1,000 sats, or a round BTC-fraction (e.g. exactly
-    # divisible by 100,000 sats = 0.001 BTC) reads as an intentional amount.
-    return value_sats % 1_000 == 0 or value_sats % 100_000 == 0
-
-
-# --------------------------------------------------------------------------
-# Clustering engine
-# --------------------------------------------------------------------------
-
-@dataclass
-class ClusteringStats:
-    txs_processed: int = 0
-    txs_clustered: int = 0
-    txs_skipped_coinjoin: int = 0
-    addresses_seen: set[str] = field(default_factory=set)
-
-
-class ClusteringEngine:
-    """
-    Stateful engine that consumes normalized transactions (from Engine 1)
-    and maintains a running CIOH clustering of all addresses seen.
-    """
-
-    def __init__(self) -> None:
+    def __init__(self, embedding_similarity_threshold: float = 0.88):
         self.dsu = DisjointSetUnion()
-        self.stats = ClusteringStats()
-        # cluster_root -> list of (txid, vout_index) flagged as change,
-        # useful context for the graph/typology engine later.
-        self._change_outputs: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        self.address_to_ips: Dict[str, Set[str]] = {}
+        self.ip_to_addresses: Dict[str, Set[str]] = {}
+        self.co_occurrence: Dict[str, Dict[str, float]] = {}
+        self.sim_threshold = embedding_similarity_threshold
 
-    def process_tx(self, tx: dict) -> str | None:
+    def _record_co_occurrence(self, addr_a: str, addr_b: str, weight: float = 1.0):
+        if addr_a not in self.co_occurrence:
+            self.co_occurrence[addr_a] = {}
+        if addr_b not in self.co_occurrence:
+            self.co_occurrence[addr_b] = {}
+        self.co_occurrence[addr_a][addr_b] = self.co_occurrence[addr_a].get(addr_b, 0.0) + weight
+        self.co_occurrence[addr_b][addr_a] = self.co_occurrence[addr_b].get(addr_a, 0.0) + weight
+
+    def _apply_graph_embeddings(self, all_addresses: List[str]):
         """
-        Apply CIOH clustering to one parsed transaction. Returns the
-        resulting cluster root address for this tx's inputs, or None if
-        the tx had no clusterable inputs (e.g. a coinbase tx) or was
-        skipped as a probable CoinJoin.
+        Derives low-dimensional node embeddings from the normalized graph adjacency matrix
+        and clusters wallets exhibiting topological interaction similarity.
         """
-        self.stats.txs_processed += 1
+        n = len(all_addresses)
+        if n < 4:
+            return
 
-        input_addresses = [
-            i["address"] for i in tx.get("inputs", []) if i.get("address")
-        ]
-        self.stats.addresses_seen.update(input_addresses)
+        addr_idx = {addr: i for i, addr in enumerate(all_addresses)}
+        adj_matrix = np.zeros((n, n), dtype=np.float32)
 
-        if is_probable_coinjoin(tx):
-            self.stats.txs_skipped_coinjoin += 1
-            # Still register addresses as known (each its own singleton
-            # cluster for now) without unioning them.
-            for addr in input_addresses:
+        for src, neighbors in self.co_occurrence.items():
+            if src in addr_idx:
+                i = addr_idx[src]
+                for dst, weight in neighbors.items():
+                    if dst in addr_idx:
+                        j = addr_idx[dst]
+                        adj_matrix[i, j] = weight
+
+        # SVD Graph Embedding
+        dim = min(8, n - 1)
+        svd = TruncatedSVD(n_components=dim, random_state=42)
+        embeddings = svd.fit_transform(adj_matrix)
+
+        # Normalize embeddings to unit hypersphere
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-8
+        norm_embeddings = embeddings / norms
+
+        # Cosine similarity clustering
+        for i in range(n):
+            for j in range(i + 1, n):
+                similarity = float(np.dot(norm_embeddings[i], norm_embeddings[j]))
+                if similarity >= self.sim_threshold:
+                    self.dsu.union(all_addresses[i], all_addresses[j])
+
+    def run_clustering(self) -> Dict[str, List[str]]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        rows = cur.execute("SELECT txid, src_ip, inputs_json, outputs_json FROM transactions").fetchall()
+
+        all_addresses: Set[str] = set()
+
+        for row in rows:
+            inputs = json.loads(row["inputs_json"])
+            outputs = json.loads(row["outputs_json"])
+            src_ip = (row["src_ip"] or "").strip()
+            input_addrs = [inp["address"] for inp in inputs if inp.get("address")]
+            output_addrs = [out["address"] for out in outputs if out.get("address")]
+
+            for addr in input_addrs:
+                all_addresses.add(addr)
                 self.dsu.find(addr)
-            return None
 
-        if not input_addresses:
-            return None
+                if addr not in self.address_to_ips:
+                    self.address_to_ips[addr] = set()
+                if src_ip and src_ip != "UNKNOWN":
+                    self.address_to_ips[addr].add(src_ip)
+                    if src_ip not in self.ip_to_addresses:
+                        self.ip_to_addresses[src_ip] = set()
+                    self.ip_to_addresses[src_ip].add(addr)
 
-        # CIOH: union every input address in this tx into one cluster.
-        first = input_addresses[0]
-        for addr in input_addresses[1:]:
-            self.dsu.union(first, addr)
-        self.stats.txs_clustered += 1
+            # Heuristic 1: CIOH
+            if len(input_addrs) > 1:
+                base_addr = input_addrs[0]
+                for co_input in input_addrs[1:]:
+                    self.dsu.union(base_addr, co_input)
+                    self._record_co_occurrence(base_addr, co_input, weight=2.0)
 
-        cluster_root = self.dsu.find(first)
+            # Topological interaction edges for Graph Embeddings
+            for in_a in input_addrs:
+                for out_a in output_addrs:
+                    all_addresses.add(out_a)
+                    self.dsu.find(out_a)
+                    self._record_co_occurrence(in_a, out_a, weight=1.0)
 
-        change_idx = identify_change_output(tx)
-        if change_idx is not None:
-            self._change_outputs[cluster_root].append((tx.get("txid"), change_idx))
-            change_output = tx["outputs"][change_idx]
-            change_address = change_output.get("address")
-            if change_address:
-                # The change address belongs to the same entity as the
-                # inputs — union it in too, growing the cluster forward.
-                self.dsu.union(first, change_address)
+        # Heuristic 2: Network IP Co-Location
+        for ip, addrs in self.ip_to_addresses.items():
+            if len(addrs) > 1 and ip and ip != "UNKNOWN":
+                addr_list = list(addrs)
+                base = addr_list[0]
+                for co_addr in addr_list[1:]:
+                    self.dsu.union(base, co_addr)
 
-        return self.dsu.find(first)
+        # Heuristic 3: Graph Embeddings
+        self._apply_graph_embeddings(list(all_addresses))
 
-    def get_cluster(self, address: str) -> list[str]:
-        """All addresses currently known to belong to `address`'s cluster."""
-        root = self.dsu.find(address)
-        return self.dsu.clusters().get(root, [address])
+        # Compile clusters
+        clusters: Dict[str, List[str]] = {}
+        for addr in all_addresses:
+            root = self.dsu.find(addr)
+            cluster_id = f"ENT_{root[:10]}"
+            if cluster_id not in clusters:
+                clusters[cluster_id] = []
+            clusters[cluster_id].append(addr)
 
-    def cluster_id(self, address: str) -> str:
-        """A stable identifier for an address's cluster (its DSU root)."""
-        return self.dsu.find(address)
+        cur.execute("DELETE FROM entity_clusters")
+        for cluster_id, addresses in clusters.items():
+            for addr in addresses:
+                ips = self.address_to_ips.get(addr, set())
+                primary_ip = next(iter(ips)) if ips else "UNKNOWN"
+                confidence = 0.95 if len(addresses) > 1 else 0.70
+                cur.execute('''
+                    INSERT INTO entity_clusters (cluster_id, wallet_address, primary_ip, confidence)
+                    VALUES (?, ?, ?, ?)
+                ''', (cluster_id, addr, primary_ip, confidence))
 
-    def summary(self) -> dict:
-        return {
-            "txs_processed": self.stats.txs_processed,
-            "txs_clustered": self.stats.txs_clustered,
-            "txs_skipped_coinjoin": self.stats.txs_skipped_coinjoin,
-            "unique_addresses_seen": len(self.stats.addresses_seen),
-            "total_clusters": len(self.dsu.clusters()),
-        }
+        conn.commit()
+        conn.close()
+        return clusters

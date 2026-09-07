@@ -1,127 +1,87 @@
-"""
-Engine 5 — 4-Layer Multi-Factor Risk Scoring Engine.
-
-Implements the exact weighted formula from the SIH26146 spec:
-
-    Risk Score = (0.40 x Taint_Exposure)
-               + (0.25 x Typology_Score)
-               + (0.20 x ML_Probability)
-               + (0.15 x Mixer_Penalty)
-
-Weights and suspicious/high-risk thresholds come from `settings`
-(WEIGHT_TAINT, WEIGHT_TYPOLOGY, WEIGHT_ML_PROBABILITY, WEIGHT_MIXER_PENALTY,
-THRESHOLD_SUSPICIOUS, THRESHOLD_HIGH_RISK) so they can be tuned without a
-code change.
-
-Each layer is scored 0-100 individually before weighting:
-
-  Layer 1 (Taint):      100 if any address in the tx hit the OFAC/scam
-                         blacklist, else 0. This is a direct-hit check, not
-                         the spec's full FIFO/haircut multi-hop taint
-                         propagation model — propagating taint percentage
-                         across N hops of a fund-flow graph needs that graph
-                         persisted, which is a further step beyond the
-                         current schema (see NodeDetails "risk_score: 0.0"
-                         limitation discussed earlier in this project).
-  Layer 2 (Typology):    driven by Engine 4's findings for this tx —
-                         peeling_chain / scatter_gather = 100 (structural,
-                         high-confidence laundering pattern), rapid_velocity
-                         alone = 70, nothing found = 0.
-  Layer 3 (ML):          Engine 5's XGBoost probability x 100 (0 if no
-                         model is loaded — see app/ml/inference.py).
-  Layer 4 (Mixer):       100 when Engine 3 flags a probable CoinJoin AND its
-                         Shannon entropy is low (uniform, predictable
-                         outputs — the strongest mixer signal), decaying
-                         linearly to 0 as entropy rises toward 4 bits; 0 if
-                         not flagged as a mixer at all.
-"""
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import List
-
-from app.core.config import settings
+import json
+import networkx as nx
+from typing import Dict
+from app.db.sqlite_client import get_db_connection
 
 
-@dataclass
-class RiskBreakdown:
-    """Per-layer 0-100 scores plus the final weighted total, for transparency."""
-    taint_score: float = 0.0
-    typology_score: float = 0.0
-    ml_probability_score: float = 0.0
-    mixer_penalty_score: float = 0.0
-    total: float = 0.0
-    flags: List[str] = field(default_factory=list)
-
-    @property
-    def verdict(self) -> str:
-        if self.total >= settings.THRESHOLD_HIGH_RISK:
-            return "HIGH_RISK"
-        if self.total >= settings.THRESHOLD_SUSPICIOUS:
-            return "SUSPICIOUS"
-        return "LICIT"
-
-
-_TYPOLOGY_SEVERITY = {
-    "peeling_chain": 100.0,
-    "scatter_gather": 100.0,
-    "rapid_velocity": 70.0,
-}
-
-
-def score_typology(typology_findings: List[dict]) -> float:
-    """Layer 2 — highest-severity Engine 4 finding for this transaction, or 0."""
-    if not typology_findings:
-        return 0.0
-    return max(_TYPOLOGY_SEVERITY.get(f.get("type"), 50.0) for f in typology_findings)
-
-
-def score_mixer_penalty(is_coinjoin: bool, entropy: float) -> float:
-    """Layer 4 — CoinJoin confidence, weighted by how uniform the outputs are."""
-    if not is_coinjoin:
-        return 0.0
-    # entropy=0 (perfectly uniform outputs) -> 100; entropy>=4 bits -> 0.
-    return max(0.0, min(100.0, 100.0 * (1.0 - entropy / 4.0)))
-
-
-def compute_risk_score(
-    *,
-    blacklist_hit: bool,
-    typology_findings: List[dict],
-    ml_probability: float,
-    is_coinjoin: bool,
-    mixer_entropy: float,
-) -> RiskBreakdown:
+class RiskPropagationEngine:
     """
-    Combines all 4 layers into a single 0-100 risk score using the weights
-    defined in `settings`. `ml_probability` is expected in [0, 1] (as
-    returned by RiskInferenceEngine.predict_proba) and is scaled to 0-100
-    here.
+    Propagates taint from known illicit seed addresses (OFAC, ransomware, scams)
+    through the directed transaction graph using Poison & Haircut decay.
     """
-    taint = 100.0 if blacklist_hit else 0.0
-    typology = score_typology(typology_findings)
-    ml_score = max(0.0, min(100.0, ml_probability * 100.0))
-    mixer = score_mixer_penalty(is_coinjoin, mixer_entropy)
+    def __init__(self, decay_factor: float = 0.85, max_hops: int = 3):
+        self.graph = nx.DiGraph()
+        self.decay_factor = decay_factor
+        self.max_hops = max_hops
 
-    total = (
-        settings.WEIGHT_TAINT * taint
-        + settings.WEIGHT_TYPOLOGY * typology
-        + settings.WEIGHT_ML_PROBABILITY * ml_score
-        + settings.WEIGHT_MIXER_PENALTY * mixer
-    )
+    def _build_graph(self):
+        self.graph.clear()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        rows = cur.execute("SELECT txid, inputs_json, outputs_json FROM transactions").fetchall()
 
-    flags = []
-    if blacklist_hit:
-        flags.append("BLACKLIST_HIT")
-    flags.extend(f.get("type", "").upper() for f in typology_findings)
-    if is_coinjoin:
-        flags.append("COINJOIN")
+        for r in rows:
+            txid = r["txid"]
+            inputs = json.loads(r["inputs_json"])
+            outputs = json.loads(r["outputs_json"])
 
-    return RiskBreakdown(
-        taint_score=taint,
-        typology_score=typology,
-        ml_probability_score=ml_score,
-        mixer_penalty_score=mixer,
-        total=round(total, 2),
-        flags=flags,
-    )
+            # Edge: Input Wallet -> TXID
+            for inp in inputs:
+                addr = inp.get("address")
+                amt = float(inp.get("amount") or 0.0)
+                if addr:
+                    self.graph.add_edge(addr, txid, weight=amt)
+
+            # Edge: TXID -> Output Wallet
+            for out in outputs:
+                addr = out.get("address")
+                amt = float(out.get("amount") or 0.0)
+                if addr:
+                    self.graph.add_edge(txid, addr, weight=amt)
+
+        conn.close()
+
+    def propagate_taint(self) -> Dict[str, float]:
+        self._build_graph()
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        seeds = cur.execute("SELECT address, severity FROM illicit_seeds").fetchall()
+        taint_scores: Dict[str, float] = {node: 0.0 for node in self.graph.nodes()}
+
+        active_seeds = {s["address"]: float(s["severity"]) for s in seeds if s["address"] in self.graph}
+        for seed_addr, severity in active_seeds.items():
+            taint_scores[seed_addr] = severity
+
+        # Each full Bitcoin transaction hop is 2 graph edges (Wallet -> TX, TX -> Wallet)
+        # Total edge iterations must be max_hops * 2
+        total_edge_steps = self.max_hops * 2
+
+        for seed_node, initial_taint in active_seeds.items():
+            current_layer = [seed_node]
+            layer_taint = initial_taint
+
+            for _ in range(total_edge_steps):
+                next_layer = []
+                for node in current_layer:
+                    successors = list(self.graph.successors(node))
+                    if not successors:
+                        continue
+
+                    out_weights = [self.graph[node][succ].get("weight", 1.0) for succ in successors]
+                    total_out = sum(out_weights) or 1.0
+
+                    for succ in successors:
+                        edge_weight = self.graph[node][succ].get("weight", 1.0)
+                        hop_taint = (layer_taint * self.decay_factor) * (edge_weight / total_out)
+                        taint_scores[succ] = min(1.0, taint_scores[succ] + hop_taint)
+                        if succ not in next_layer:
+                            next_layer.append(succ)
+
+                layer_taint *= self.decay_factor
+                current_layer = next_layer
+                if not current_layer:
+                    break
+
+        conn.close()
+        return {k: round(v, 4) for k, v in taint_scores.items()}
