@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suspicious Transaction Report - {{ dossier.blockchain_layer.txid }}</title>
+    <style>
+        :root {
+            --bg-main: #0d1117;
+            --bg-card: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-heading: #f0f6fc;
+            --text-muted: #8b949e;
+            --accent-red: #da3633;
+            --accent-green: #238636;
+            --accent-gold: #d29922;
+            --accent-blue: #58a6ff;
+            --accent-purple: #bc8cff;
+        }
+
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            .card {
+                border: 1px solid #cccccc !important;
+                background-color: #ffffff !important;
+                page-break-inside: avoid;
+            }
+            .badge {
+                border: 1px solid #000000 !important;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1040px;
+            margin: 0 auto;
+        }
+
+        .header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .title {
+            color: var(--text-heading);
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-danger { background-color: var(--accent-red); color: #ffffff; }
+        .badge-warning { background-color: var(--accent-gold); color: #000000; }
+        .badge-info { background-color: var(--accent-blue); color: #000000; }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            margin-top: 0;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            color: var(--text-heading);
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--text-heading);
+            background-color: rgba(255, 255, 255, 0.03);
+            font-weight: 600;
+        }
+
+        .code {
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            background-color: rgba(110, 118, 129, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+        }
+
+        .json-block {
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            background-color: #0b0e14;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 12px;
+            color: #79c0ff;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .digest-footer {
+            margin-top: 24px;
+            padding: 14px;
+            border: 1px dashed var(--border-color);
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.01);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <div class="title">SUSPICIOUS TRANSACTION REPORT (STR)</div>
+            <div class="subtitle">OFFLINE FORENSIC INTELLIGENCE DOSSIER &bull; REF: <span class="code">{{ dossier.metadata.dossier_id }}</span></div>
+        </div>
+        <div>
+            {% if dossier.forensic_scoring.composite_risk_score >= 0.70 %}
+                <span class="badge badge-danger">CRITICAL RISK</span>
+            {% elif dossier.forensic_scoring.composite_risk_score >= 0.35 %}
+                <span class="badge badge-warning">ELEVATED RISK</span>
+            {% else %}
+                <span class="badge badge-info">ROUTINE FLAGGED</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Forensic Risk Scoring Summary -->
+    <div class="card">
+        <div class="card-title">1. Forensic Scoring & Primary Detection Marker</div>
+        <div class="grid-2">
+            <div>
+                <div class="metric-row">
+                    <span class="metric-label">Primary AI/ML Focus Area:</span>
+                    <span class="metric-value code">{{ dossier.forensic_scoring.primary_focus_area }}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Composite Risk Score:</span>
+                    <span class="metric-value">{{ "%.4f"|format(dossier.forensic_scoring.composite_risk_score) }} / 1.0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Detection Confidence:</span>
+                    <span class="metric-value">{{ "%.4f"|format(dossier.forensic_scoring.model_confidence) }}</span>
+                </div>
+            </div>
+            <div>
+                <div class="metric-row">
+                    <span class="metric-label">Peeling-Chain Laundering:</span>
+                    <span class="metric-value" style="color: {{ 'var(--accent-red)' if dossier.forensic_scoring.peeling_chain_flag else 'var(--text-muted)' }};">
+                        {{ "CONFIRMED POSITIVE" if dossier.forensic_scoring.peeling_chain_flag else "NEGATIVE" }}
+                    </span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">CoinJoin-like topology:</span>
+                    <span class="metric-value" style="color: {{ 'var(--accent-red)' if dossier.forensic_scoring.mixer_coinjoin_flag else 'var(--text-muted)' }};">
+                        {{ "CONFIRMED POSITIVE" if dossier.forensic_scoring.mixer_coinjoin_flag else "NEGATIVE" }}
+                    </span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Illicit Seed Taint Index:</span>
+                    <span class="metric-value">{{ "%.4f"|format(dossier.forensic_scoring.taint_score) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dual-Layer Correlation -->
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">2. Network-Layer Telemetry</div>
+            <div class="metric-row">
+                <span class="metric-label">Source Broadcast IP:</span>
+                <span class="metric-value code">{{ dossier.network_layer.src_ip }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Destination Node IP:</span>
+                <span class="metric-value code">{{ dossier.network_layer.dst_ip }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Port Pair (Src &rarr; Dst):</span>
+                <span class="metric-value code">{{ dossier.network_layer.src_port }} &rarr; {{ dossier.network_layer.dst_port }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Origin Jurisdiction:</span>
+                <span class="metric-value">{{ dossier.network_layer.geo_country }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Autonomous System (ASN):</span>
+                <span class="metric-value">{{ dossier.network_layer.geo_asn }}</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">3. Blockchain Ledger Layer</div>
+            <div class="metric-row">
+                <span class="metric-label">Target TXID:</span>
+                <span class="metric-value code">{{ dossier.blockchain_layer.txid }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Total Input Volume:</span>
+                <span class="metric-value">{{ dossier.blockchain_layer.total_input_btc }} BTC</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Total Output Volume:</span>
+                <span class="metric-value">{{ dossier.blockchain_layer.total_output_btc }} BTC</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Miner Transaction Fee:</span>
+                <span class="metric-value">{{ "%.8f"|format(dossier.blockchain_layer.fee_btc) }} BTC</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Script Encoding Type:</span>
+                <span class="metric-value code">{{ dossier.blockchain_layer.script_type }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-Input / Multi-Output Flow Attribution -->
+    <div class="card">
+        <div class="card-title">4. Flow Attribution & Clustered Entities</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Direction</th>
+                    <th style="width: 48%;">Wallet Address</th>
+                    <th style="width: 18%;">Amount (BTC)</th>
+                    <th style="width: 22%;">Entity Cluster</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inp in dossier.blockchain_layer.inputs %}
+                <tr>
+                    <td><span style="color: var(--accent-red); font-weight: 600;">&bull; INPUT</span></td>
+                    <td><span class="code">{{ inp.address }}</span></td>
+                    <td>{{ "%.8f"|format(inp.amount|float) }}</td>
+                    <td>
+                        <span class="code">
+                            {{ (dossier.entity_intelligence.input_clusters.get(inp.address) or {}).get('cluster_id', 'UNCLUSTERED') }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% for out in dossier.blockchain_layer.outputs %}
+                <tr>
+                    <td><span style="color: var(--accent-green); font-weight: 600;">&bull; OUTPUT</span></td>
+                    <td><span class="code">{{ out.address }}</span></td>
+                    <td>{{ "%.8f"|format(out.amount|float) }}</td>
+                    <td><span style="color: var(--text-muted); font-style: italic;">Recipient Address</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Structured Explainability Payload -->
+    <div class="card">
+        <div class="card-title">5. AI/ML Explainability & Attributed Evidence</div>
+        <div class="json-block">{{ dossier.forensic_scoring.explainability | tojson(indent=2) }}</div>
+    </div>
+
+    <div class="digest-footer">
+        CHAIN OF CUSTODY SHA-256 DIGEST: {{ dossier.chain_of_custody_hash }}<br>
+        Verified Tamper-Evident Forensic Dossier &bull; Generated strictly in offline air-gapped environment
+    </div>
+</div>
+</body>
+</html>

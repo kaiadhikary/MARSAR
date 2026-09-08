@@ -1,0 +1,8 @@
+txid,timestamp,src_ip,dst_ip,src_port,dst_port,fee,script_type,geo_country,geo_asn,input_addresses,output_addresses,input_amounts,output_amounts
+tx_ransom_peel_001,1700000000,198.51.100.24,104.28.16.5,45210,8333,0.00025,p2wpkh,RU,AS12389 - Rostelecom,1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa,addr_peeled_cashout_1;addr_peel_change_hop_1,2.50000,0.15000;2.34975
+tx_ransom_peel_002,1700000600,198.51.100.24,104.28.16.5,45211,8333,0.00025,p2wpkh,RU,AS12389 - Rostelecom,addr_peel_change_hop_1,addr_peeled_cashout_2;addr_peel_change_hop_2,2.34975,0.18000;2.16950
+tx_ransom_peel_003,1700001200,198.51.100.24,104.28.16.5,45212,8333,0.00025,p2wpkh,RU,AS12389 - Rostelecom,addr_peel_change_hop_2,addr_peeled_cashout_3;addr_peel_change_hop_3,2.16950,0.20000;1.96925
+tx_coinjoin_mixer_01,1700002000,203.0.113.88,104.28.16.5,50122,8333,0.00040,p2sh,IR,AS58224 - TIC,addr_mix_in_1;addr_mix_in_2;addr_mix_in_3;addr_mix_in_4,addr_clean_out_1;addr_clean_out_2;addr_clean_out_3;addr_clean_out_4,0.501;0.502;0.501;0.503,0.50000;0.50000;0.50000;0.50000
+tx_cioh_multisig_01,1700003000,194.26.29.11,104.28.16.5,55120,8333,0.00030,p2wsh,SC,AS51852 - Private Layer,addr_entity_a1;addr_entity_a2;addr_entity_a3,addr_vault_target,1.20000;2.40000;0.80000,4.39970
+tx_benign_payment_01,1700004000,192.0.2.14,104.28.16.5,39412,8333,0.00005,p2wpkh,US,AS15169 - Google LLC,addr_user_wallet_1,addr_merchant_wallet_1;addr_user_change_1,0.85000,0.30000;0.54995
+tx_benign_payment_02,1700005000,192.0.2.45,104.28.16.5,41029,8333,0.00005,p2wpkh,US,AS15169 - Google LLC,addr_user_wallet_2,addr_merchant_wallet_2;addr_user_change_2,1.20000,0.45000;0.74995

@@ -1,0 +1,9 @@
+subnet_prefix,country_code,asn_name
+198.51.100,RU,AS12389 - Rostelecom
+203.0.113,IR,AS58224 - TIC
+192.0.2,NL,AS49981 - WorldStream
+104.28,US,AS13335 - Cloudflare
+185.220,DE,AS205100 - Tor Exit Node
+194.26,SC,AS51852 - Private Layer
+45.33,US,AS63949 - Linode
+195.123,LV,AS50360 - BalticServers

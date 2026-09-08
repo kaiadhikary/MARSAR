@@ -1,0 +1,82 @@
+[
+  {
+    "txid": "tx_ransom_peel_001",
+    "timestamp": 1700000000,
+    "src_ip": "198.51.100.24",
+    "dst_ip": "104.28.16.5",
+    "src_port": 45210,
+    "dst_port": 8333,
+    "fee": 0.00025,
+    "script_type": "p2wpkh",
+    "geo_country": "RU",
+    "geo_asn": "AS12389 - Rostelecom",
+    "inputs": [
+      {
+        "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+        "amount": 2.50000
+      }
+    ],
+    "outputs": [
+      {
+        "address": "addr_peeled_cashout_1",
+        "amount": 0.15000
+      },
+      {
+        "address": "addr_peel_change_hop_1",
+        "amount": 2.34975
+      }
+    ]
+  },
+  {
+    "txid": "tx_coinjoin_mixer_01",
+    "timestamp": 1700002000,
+    "src_ip": "203.0.113.88",
+    "dst_ip": "104.28.16.5",
+    "src_port": 50122,
+    "dst_port": 8333,
+    "fee": 0.00040,
+    "script_type": "p2sh",
+    "geo_country": "IR",
+    "geo_asn": "AS58224 - TIC",
+    "inputs": [
+      { "address": "addr_mix_in_1", "amount": 0.501 },
+      { "address": "addr_mix_in_2", "amount": 0.502 },
+      { "address": "addr_mix_in_3", "amount": 0.501 },
+      { "address": "addr_mix_in_4", "amount": 0.503 }
+    ],
+    "outputs": [
+      { "address": "addr_clean_out_1", "amount": 0.500 },
+      { "address": "addr_clean_out_2", "amount": 0.500 },
+      { "address": "addr_clean_out_3", "amount": 0.500 },
+      { "address": "addr_clean_out_4", "amount": 0.500 }
+    ]
+  },
+  {
+    "txid": "tx_benign_payment_01",
+    "timestamp": 1700004000,
+    "src_ip": "192.0.2.14",
+    "dst_ip": "104.28.16.5",
+    "src_port": 39412,
+    "dst_port": 8333,
+    "fee": 0.00005,
+    "script_type": "p2wpkh",
+    "geo_country": "US",
+    "geo_asn": "AS15169 - Google LLC",
+    "inputs": [
+      {
+        "address": "addr_user_wallet_1",
+        "amount": 0.85000
+      }
+    ],
+    "outputs": [
+      {
+        "address": "addr_merchant_wallet_1",
+        "amount": 0.30000
+      },
+      {
+        "address": "addr_user_change_1",
+        "amount": 0.54995
+      }
+    ]
+  }
+]

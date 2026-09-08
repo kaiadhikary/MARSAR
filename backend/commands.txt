@@ -1,0 +1,38 @@
+================================================================================
+MARSAR BACKEND: LINUX CLI COMMAND CHEAT SHEET (OFFLINE MODE)
+================================================================================
+
+1. INSTALL DEPENDENCIES (Air-Gapped Wheel Cache or Local Virtualenv):
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+
+2. INITIALIZE DATABASE & RUN FULL END-TO-END PIPELINE:
+   python3 run_offline_pipeline.py
+
+3. START THE FASTAPI LOCAL BACKEND SERVER:
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+4. RUN AUTOMATED TEST SUITE:
+   pytest tests/ -v
+
+5. RE-TRAIN OFFLINE ML MODEL WEIGHTS:
+   python3 train_elliptic_xgboost.py
+
+6. GENERATE SUSPICIOUS TRANSACTION REPORT (HTML STR):
+   python3 generate_html_report.py
+   python3 generate_html_report.py --txid tx_ransom_peel_hop_0_XXXX
+
+7. INSPECT DATABASE & CLUSTERS:
+   python3 check_db.py
+   python3 check_clusters.py
+   python3 check_transactions.py
+
+8. LAUNCH BACKGROUND BATCH WATCHER DAEMON:
+   python3 run_worker.py
+
+9. TEST API VIA CURL:
+   curl -s http://localhost:8000/health | jq .
+   curl -s http://localhost:8000/api/v1/alerts/ranked | jq .
+   curl -s http://localhost:8000/api/v1/graph/topology | jq .
+   
