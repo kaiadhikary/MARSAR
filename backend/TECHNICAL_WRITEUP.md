@@ -1,4 +1,3 @@
-cat << 'EOF' > backend/TECHNICAL_WRITEUP.md
 # TECHNICAL WRITE-UP: AI-POWERED BITCOIN TRAFFIC FORENSIC ENGINE
 
 ## 1. Approach
@@ -15,4 +14,3 @@ Every generated alert includes a structured JSON evidence ledger detailing:
 * Relative feature deviation (z-score) isolating the primary variable triggering the anomaly.
 * Decision-tree feature importance attribution weights identifying top contributing behavioral signals.
 * Mathematical breakdown of the composite risk score combining seed taint, ML probability, peeling/mixing confidence, and network jurisdiction risk.
-EOF

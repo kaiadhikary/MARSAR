@@ -1,0 +1,156 @@
+txid,injected_pattern,detail
+tx_ransom_peel_0_0_1409,peeling_chain,"chain 0, hop 0"
+tx_ransom_peel_0_1_2424,peeling_chain,"chain 0, hop 1"
+tx_ransom_peel_0_2_1434,peeling_chain,"chain 0, hop 2"
+tx_ransom_peel_0_3_5557,peeling_chain,"chain 0, hop 3"
+tx_ransom_peel_0_4_5552,peeling_chain,"chain 0, hop 4"
+tx_ransom_peel_1_0_6635,peeling_chain,"chain 1, hop 0"
+tx_ransom_peel_1_1_7201,peeling_chain,"chain 1, hop 1"
+tx_ransom_peel_1_2_2139,peeling_chain,"chain 1, hop 2"
+tx_ransom_peel_1_3_4814,peeling_chain,"chain 1, hop 3"
+tx_ransom_peel_1_4_3664,peeling_chain,"chain 1, hop 4"
+tx_ransom_peel_2_0_3803,peeling_chain,"chain 2, hop 0"
+tx_ransom_peel_2_1_4598,peeling_chain,"chain 2, hop 1"
+tx_ransom_peel_2_2_6168,peeling_chain,"chain 2, hop 2"
+tx_ransom_peel_2_3_7482,peeling_chain,"chain 2, hop 3"
+tx_ransom_peel_2_4_9830,peeling_chain,"chain 2, hop 4"
+tx_ransom_peel_3_0_2489,peeling_chain,"chain 3, hop 0"
+tx_ransom_peel_3_1_2040,peeling_chain,"chain 3, hop 1"
+tx_ransom_peel_3_2_1188,peeling_chain,"chain 3, hop 2"
+tx_ransom_peel_3_3_2827,peeling_chain,"chain 3, hop 3"
+tx_ransom_peel_3_4_9201,peeling_chain,"chain 3, hop 4"
+tx_ransom_peel_4_0_4258,peeling_chain,"chain 4, hop 0"
+tx_ransom_peel_4_1_1009,peeling_chain,"chain 4, hop 1"
+tx_ransom_peel_4_2_4923,peeling_chain,"chain 4, hop 2"
+tx_ransom_peel_4_3_2133,peeling_chain,"chain 4, hop 3"
+tx_ransom_peel_4_4_3705,peeling_chain,"chain 4, hop 4"
+tx_ransom_peel_5_0_4295,peeling_chain,"chain 5, hop 0"
+tx_ransom_peel_5_1_8397,peeling_chain,"chain 5, hop 1"
+tx_ransom_peel_5_2_4770,peeling_chain,"chain 5, hop 2"
+tx_ransom_peel_5_3_6413,peeling_chain,"chain 5, hop 3"
+tx_ransom_peel_5_4_8744,peeling_chain,"chain 5, hop 4"
+tx_coinjoin_mixer_0_7735,coinjoin,"8-participant mix, denom=0.5 BTC"
+tx_coinjoin_mixer_1_4502,coinjoin,"8-participant mix, denom=1.0 BTC"
+tx_coinjoin_mixer_2_2312,coinjoin,"5-participant mix, denom=0.1 BTC"
+tx_coinjoin_mixer_3_5351,coinjoin,"5-participant mix, denom=0.5 BTC"
+tx_coinjoin_mixer_4_5956,coinjoin,"5-participant mix, denom=1.0 BTC"
+tx_coinjoin_mixer_5_5325,coinjoin,"6-participant mix, denom=0.25 BTC"
+tx_coinjoin_mixer_6_3426,coinjoin,"4-participant mix, denom=0.5 BTC"
+tx_coinjoin_mixer_7_3938,coinjoin,"5-participant mix, denom=1.0 BTC"
+tx_coinjoin_mixer_8_5564,coinjoin,"5-participant mix, denom=1.0 BTC"
+tx_coinjoin_mixer_9_8149,coinjoin,"8-participant mix, denom=0.5 BTC"
+tx_cioh_consolidation_0_5930,cioh_consolidation,6 inputs consolidated by one entity
+tx_cioh_consolidation_1_2389,cioh_consolidation,5 inputs consolidated by one entity
+tx_cioh_consolidation_2_8461,cioh_consolidation,5 inputs consolidated by one entity
+tx_cioh_consolidation_3_4585,cioh_consolidation,3 inputs consolidated by one entity
+tx_cioh_consolidation_4_9270,cioh_consolidation,6 inputs consolidated by one entity
+tx_cioh_consolidation_5_2320,cioh_consolidation,6 inputs consolidated by one entity
+tx_cioh_consolidation_6_7232,cioh_consolidation,6 inputs consolidated by one entity
+tx_cioh_consolidation_7_8657,cioh_consolidation,6 inputs consolidated by one entity
+tx_cioh_consolidation_8_5558,cioh_consolidation,6 inputs consolidated by one entity
+tx_cioh_consolidation_9_4266,cioh_consolidation,3 inputs consolidated by one entity
+tx_outlier_high_urgency_0_4571,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_1_6096,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_2_2245,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_3_1672,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_4_9031,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_5_5425,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_6_2419,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_7_9098,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_8_5526,outlier,non-standard port + urgent fee
+tx_outlier_high_urgency_9_8800,outlier,non-standard port + urgent fee
+tx_geo_anomaly_0_7046,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_1_5438,geo_anomaly,unexpected jump to DE
+tx_geo_anomaly_2_4033,geo_anomaly,unexpected jump to DE
+tx_geo_anomaly_3_4180,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_4_1745,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_5_1200,geo_anomaly,unexpected jump to IR
+tx_geo_anomaly_6_8827,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_7_3444,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_8_4697,geo_anomaly,unexpected jump to IR
+tx_geo_anomaly_9_6003,geo_anomaly,unexpected jump to DE
+tx_geo_anomaly_10_4457,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_11_8381,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_12_8438,geo_anomaly,unexpected jump to IR
+tx_geo_anomaly_13_2880,geo_anomaly,unexpected jump to RU
+tx_geo_anomaly_14_3718,geo_anomaly,unexpected jump to RU
+tx_scatter_0_4750,scatter_gather,fan-out to 15 addresses
+tx_gather_0_901909,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_142185,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_644173,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_290305,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_953797,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_464863,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_802685,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_531641,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_794769,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_897441,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_192337,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_221552,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_964998,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_668950,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_gather_0_296694,scatter_gather,converges into gather event 0 (source tx tx_scatter_0_4750)
+tx_scatter_1_1224,scatter_gather,fan-out to 15 addresses
+tx_gather_1_218972,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_972565,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_839677,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_355570,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_299869,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_243139,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_928381,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_632401,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_861319,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_791998,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_664742,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_899929,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_297816,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_501574,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_gather_1_433632,scatter_gather,converges into gather event 1 (source tx tx_scatter_1_1224)
+tx_scatter_2_3529,scatter_gather,fan-out to 15 addresses
+tx_gather_2_753534,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_184216,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_659543,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_853629,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_137642,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_761820,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_883041,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_897305,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_274446,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_148225,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_475876,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_356059,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_814919,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_283573,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_gather_2_749813,scatter_gather,converges into gather event 2 (source tx tx_scatter_2_3529)
+tx_scatter_3_7951,scatter_gather,fan-out to 15 addresses
+tx_gather_3_416797,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_211834,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_476395,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_409571,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_108491,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_881369,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_937665,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_469435,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_362801,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_201883,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_926918,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_482584,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_409445,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_310548,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_gather_3_656639,scatter_gather,converges into gather event 3 (source tx tx_scatter_3_7951)
+tx_scatter_4_3024,scatter_gather,fan-out to 15 addresses
+tx_gather_4_499534,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_807617,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_749641,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_739717,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_963874,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_528129,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_139019,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_201913,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_507524,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_879238,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_715870,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_786735,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_527940,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_823811,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)
+tx_gather_4_566297,scatter_gather,converges into gather event 4 (source tx tx_scatter_4_3024)

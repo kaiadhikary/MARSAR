@@ -1,0 +1,249 @@
+=====================================================================
+MARSAR — STEP-BY-STEP RUN COMMANDS (backend + frontend)
+=====================================================================
+Two projects, run together, THREE terminals total:
+  - backend/   -> FastAPI API (Terminal 1) + ingestion worker (Terminal 2)
+  - frontend/  -> Next.js UI with the Cytoscape graph view (Terminal 3)
+
+Do the BACKEND steps first, THEN the FRONTEND steps. The frontend is
+just a client — it has nothing to show until the backend API is
+reachable on port 8000.
+
+This zip is meant to be extracted straight over your existing project
+folder (it will overwrite files, not add a new top-level folder) —
+unzip it from the same directory that already contains your backend/
+and frontend/ folders.
+
+
+---------------------------------------------------------------
+PART A — BACKEND
+---------------------------------------------------------------
+There are TWO separate processes here — run them in TWO SEPARATE
+TERMINALS:
+  1) The FastAPI web server (app.main)      -> serves the REST API
+  2) The ingestion worker (run_worker.py)   -> streams live mempool
+     data, clusters it, screens it, scores it, and writes to SQLite
+
+The API server alone will start fine, but the alerts/graph/trace
+endpoints will stay empty until the worker (Terminal 2) is also
+running, since the worker is what populates storage.db.
+
+STEP 1. Unzip this project over your existing folder (skip if already done)
+    cd backend
+
+STEP 2. Create a virtual environment (skip if you already have one)
+    python3 -m venv venv
+
+STEP 3. Activate the virtual environment
+    # Windows (cmd):        venv\Scripts\activate
+    # Windows (PowerShell):  venv\Scripts\Activate.ps1
+    # macOS / Linux:         source venv/bin/activate
+
+STEP 4. Install dependencies
+    pip install -r requirements.txt
+
+STEP 5. (First run only, or after a schema change) Initialize/migrate the DB
+    python -c "from app.db.sqlite_client import init_db, load_seed_data; init_db(); load_seed_data()"
+    This is safe to re-run any time — it only adds missing tables/columns,
+    it never deletes existing data.
+
+STEP 6. Start the FastAPI server (Terminal 1 — keep this running)
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+STEP 7. Open a SECOND terminal, activate the same venv again, then
+        start the ingestion worker (Terminal 2 — keep this running)
+    cd backend
+    source venv/bin/activate        (or venv\Scripts\activate on Windows)
+    python run_worker.py
+
+STEP 8. Verify the API is up
+    curl http://localhost:8000/health
+    Expected: {"status": "ok", "app": "MARSAR - Bitcoin Forensics & AML"}
+
+STEP 9. Watch the worker logs
+    You should start seeing lines like:
+    [INFO] marsar.worker: Connected to mempool WebSocket ...
+    [INFO] marsar.worker: ⚡ [INGESTED & PERSISTED] TX: ...
+    [WARNING] marsar.worker: 🟠 [SUSPICIOUS] TX: ... | Score: 40.0/100 | Flags: ...
+    Give it 1–2 minutes to pick up live transactions.
+
+STEP 10. (Optional) Inspect the database while the worker runs
+    python check_db.py              -> lists all tables
+    python check_clusters.py        -> cluster counts/schema
+    python check_transactions.py    -> latest suspicious (CoinJoin) txs
+    python cluster_explorer.py      -> browse cluster addresses AND the
+                                        full Engine 5 score breakdown
+                                        (Taint/Typology/ML/Mixer) behind
+                                        recent or suspicious transactions,
+                                        plus the actual input/output
+                                        addresses of each transaction.
+                                        Interactive menu, or run directly:
+                                          python cluster_explorer.py --mode recent --limit 10
+                                          python cluster_explorer.py --mode suspicious --min-score 30
+
+STEP 11. (Optional) Reset stored data if you want a clean slate
+    python reset_db.py              -> clears non-suspicious transactions
+
+STEP 11b. (Optional) Check that Engine 5 (the scoring system) is working
+    Just run this one command:
+        python -m pytest tests/ -v
+    If you see "16 passed" at the bottom — it's working correctly. Done.
+
+STEP 11c. (Optional) Train the AI model (Engine 5's Layer 4)
+    This teaches the AI using data your worker has already collected.
+
+    1. Let the worker run for a while first (a few hours), so it
+       collects enough transactions to learn from:
+           python run_worker.py
+       Just leave it running, then come back later.
+
+    2. Once it's collected enough, run this to train the model:
+           python train_engine5_model.py
+       It trains and saves the model automatically — nothing else to do.
+
+    3. If it says "not enough data" — let the worker run longer, then
+       try step 2 again.
+
+    4. Once training works, restart the worker:
+           python run_worker.py
+       It automatically picks up the new model. That's it — the AI
+       part is now switched on.
+
+    (There is a second file, train_elliptic_xgboost.py — ignore it for
+    now. It needs a big dataset downloaded separately first, and it
+    doesn't even plug into this project. It's only for later, if you
+    want to also show a model trained on the "official" dataset for
+    your demo. Not needed for the project to work.)
+
+STEP 12. To stop everything
+    Press CTRL + C in both terminals (Terminal 1 = API, Terminal 2 = worker)
+    deactivate                       -> exits the virtual environment
+
+
+---------------------------------------------------------------
+PART B — FRONTEND (Next.js + Cytoscape graph viewer) — Terminal 3
+---------------------------------------------------------------
+Requires Node.js 18+ installed (check with: node -v).
+Keep Terminal 1 (API) and Terminal 2 (worker) running from Part A.
+
+STEP 1. Unzip this project over your existing folder (skip if already done)
+    cd frontend
+
+STEP 2. Install dependencies
+    npm install
+
+STEP 3. (Optional) point it at a different backend URL
+    Only needed if your API isn't on http://localhost:8000. Copy the
+    example env file and edit it:
+    cp .env.local.example .env.local
+    # then edit NEXT_PUBLIC_API_BASE_URL inside .env.local
+
+STEP 4. Start the dev server
+    npm run dev
+
+STEP 5. Open it in a browser
+    http://localhost:3000
+    Click "Investigator" in the left nav (or go straight to
+    http://localhost:3000/investigator).
+
+STEP 6. Search an address
+    Paste in a Bitcoin address your worker has already clustered and
+    press "Expand". Don't have one handy? Get one from the backend:
+    cd ../backend
+    python cluster_explorer.py --mode recent --limit 5
+    (copy any address printed under "TX addresses", paste it into the
+    Investigator search box)
+
+    - Orange node  = cluster root address
+    - Blue node    = other address in the same cluster
+    - Red node     = blacklisted (OFAC / CryptoScamDB hit)
+    - Click any node to see its details in the right-hand panel
+
+STEP 7. To stop
+    Press CTRL + C in the frontend terminal.
+
+
+---------------------------------------------------------------
+QUICK REFERENCE — ALL COMMANDS IN ORDER (macOS/Linux)
+---------------------------------------------------------------
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -c "from app.db.sqlite_client import init_db, load_seed_data; init_db(); load_seed_data()"
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# --- open a second terminal ---
+cd backend
+source venv/bin/activate
+python run_worker.py
+# --- open a third terminal ---
+cd frontend
+npm install
+npm run dev
+# then open http://localhost:3000/investigator in a browser
+
+
+---------------------------------------------------------------
+TROUBLESHOOTING
+---------------------------------------------------------------
+- "ModuleNotFoundError: No module named 'app'"
+    -> Make sure you're inside the "backend" folder when you run
+       uvicorn/python commands (it must see the "app" package).
+
+- Worker shows repeated "Mempool WS disconnected ... reconnecting"
+    -> Normal on flaky networks; it auto-reconnects with backoff.
+       Persistent failures usually mean no internet access to
+       wss://mempool.space from this machine/network.
+
+- "AttributeError: 'Settings' object has no attribute ..."
+    -> Should not happen in this version. If it does, you are likely
+       running an older/mismatched copy of backend/ — re-extract this
+       zip over your project folder.
+
+- Engine 5 log line: "Engine 5 ML model not found (or empty) at ... —
+  Layer 4 (ML_Probability) will contribute 0 to every risk score..."
+    -> Expected, not a bug. app/ml/weights/elliptic_xgb.joblib ships as
+       a 0-byte placeholder — no XGBoost model has been trained yet
+       (that's the separate Colab pipeline under training/). Layers 1,
+       2, 4 (Taint, Typology, Mixer) still work and contribute to the
+       risk score normally; only the ML layer is inert until a real
+       .joblib is dropped into that path. IMPORTANT: it must be trained
+       against the same 12 features in app/ml/feature_extractor.py's
+       FEATURE_NAMES (NOT the Elliptic dataset's native 166 features —
+       that full feature pipeline isn't built here). If you load a
+       model trained on a different feature count, inference.py now
+       detects the mismatch automatically and disables Layer 4 with a
+       clear log message instead of silently producing garbage scores.
+
+- "ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'"
+    -> pip installed pydantic_core's Python wrapper but not its compiled
+       binary extension. Usually caused by no prebuilt wheel being
+       available for your exact Python version (very new/very old
+       Python, e.g. 3.14) or a corrupted pip cache. Fix:
+         deactivate
+         rd /s /q venv                (Windows)   or   rm -rf venv   (macOS/Linux)
+         python -m venv venv
+         venv\Scripts\activate                     (or source venv/bin/activate)
+         python -m pip install --upgrade pip
+         pip install -r requirements.txt --no-cache-dir --force-reinstall
+         python -c "import pydantic_core; print(pydantic_core.__file__)"
+       If that still fails, recreate the venv using Python 3.11 or 3.12
+       instead:
+         py -3.11 -m venv venv
+         venv\Scripts\activate
+         python -m pip install --upgrade pip
+         pip install -r requirements.txt
+
+- Frontend loads but the Investigator page shows "Couldn't reach the
+  backend" after searching an address
+    -> Make sure Terminal 1 (uvicorn) is actually still running and
+       responds to: curl http://localhost:8000/health
+    -> If you changed the API port, update NEXT_PUBLIC_API_BASE_URL in
+       frontend/.env.local (see Part B, Step 3) and restart `npm run dev`.
+    -> Browser console shows a CORS error specifically -> confirm
+       app/core/config.py's BACKEND_CORS_ORIGINS list includes
+       "http://localhost:3000" (it does by default in this version).
+
+- Port 8000 already in use
+    -> Change the port: uvicorn app.main:app --port 8001
+       (and adjust curl/browser URLs accordingly)

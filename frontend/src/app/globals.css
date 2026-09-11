@@ -1,8 +1,86 @@
-/* Global styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background-color: #020617; /* slate-950 */
+:root {
+  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "IBM Plex Mono", ui-monospace, monospace;
+  --bg: #08090b;
+  --surface: #0d0f12;
+  --elevated: #111318;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.45);
+  --faint: rgba(255, 255, 255, 0.28);
+  --accent: #3ec8ff;
+  --accent-2: #6d7cff;
+  --violet: #7c5cff;
+  --safe: #3d9b74;
+  --warning: #d4a017;
+  --orange: #e07a2f;
+  --danger: #e24b4b;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  font-feature-settings: "ss01" on, "cv11" on, "tnum" on;
+}
+
+::selection {
+  background: rgba(62, 200, 255, 0.28);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.marsar-bg {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at top center, rgba(70, 80, 255, 0.12), transparent 45%),
+    radial-gradient(720px 360px at 92% 0%, rgba(62, 200, 255, 0.06), transparent 48%);
+}
+
+.panel,
+.glass,
+.glass-strong {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.panel-elevated,
+.glass-strong {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+}
+
+.mono-ellipsis {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  letter-spacing: -0.02em;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }

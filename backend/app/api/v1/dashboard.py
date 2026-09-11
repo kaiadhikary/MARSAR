@@ -15,6 +15,7 @@ from app.reports.generator import ReportGenerator
 from app.ml.feature_extractor import FeatureExtractor
 
 router = APIRouter()
+public_router = APIRouter()
 
 
 def _alert_rows(limit: int):
@@ -94,7 +95,7 @@ def expand_address_graph(address: str, hops: int = Query(3, ge=1, le=5)):
     return {"status": "success", "address": address, "hops": hops, "cluster": cluster_data, "nodes": nodes, "edges": edges}
 
 
-@router.get("/compliance/transactions")
+@public_router.get("/compliance/transactions")
 def reportable_transactions(limit: int = Query(50, ge=1, le=500)):
     conn = get_db_connection()
     txs = conn.execute("SELECT * FROM transactions ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
@@ -115,7 +116,7 @@ def _flagged_view(alert):
             "flagged_at": alert["created_at"]}
 
 
-@router.get("/compliance/flagged")
+@public_router.get("/compliance/flagged")
 def flagged_transactions(limit: int = Query(100, ge=1, le=500)):
     return {"flagged": [_flagged_view(row) for row in _alert_rows(limit)]}
 
@@ -126,7 +127,7 @@ class ExportRequest(BaseModel):
     investigator_note: Optional[str] = None
 
 
-@router.post("/export-str")
+@public_router.post("/export-str")
 def export_str_report(request: ExportRequest):
     """Generate and download an offline HTML dossier with integrity headers."""
     report = ReportGenerator().generate_html_str(request.txid.strip())
@@ -141,3 +142,9 @@ def export_str_report(request: ExportRequest):
         "X-TXID": request.txid.strip(), "X-Risk-Score": str(round(score, 4)) if score is not None else "UNKNOWN", "X-Verdict": verdict,
         "X-Evidence-SHA256": report["chain_of_custody_hash"], "X-Generated-At": str(int(time.time())),
     })
+
+
+@public_router.post("/compliance/export-str")
+def export_str_report_alias(request: ExportRequest):
+    """Alias for POST /export-str (Engine 6 compatibility)."""
+    return export_str_report(request)

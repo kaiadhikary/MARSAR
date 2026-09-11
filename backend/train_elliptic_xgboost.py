@@ -84,9 +84,17 @@ def generate_training_data(n_samples: int = 1500):
 
 
 def train_and_export(output: Path | None = None):
-    weights_dir = Path(__file__).parent / "app" / "ml" / "weights"
-    weights_dir.mkdir(parents=True, exist_ok=True)
-    weights_path = output or weights_dir / "elliptic_xgb.joblib"
+    # BUG FIX: this used to default to app/ml/weights/elliptic_xgb.joblib,
+    # but app/core/config.py's settings.WEIGHTS_PATH (what MLInferenceEngine
+    # actually loads from) points at bitcoin_network_gbdt.joblib - a
+    # different filename. Training "succeeded" and printed a real ROC-AUC,
+    # but the inference engine could never find that file and silently fell
+    # back to its tiny 6-sample embedded fallback model every single time,
+    # regardless of training. Defaulting to the same settings.WEIGHTS_PATH
+    # both sides use closes that gap.
+    from app.core.config import settings
+    weights_path = output or settings.WEIGHTS_PATH
+    weights_path.parent.mkdir(parents=True, exist_ok=True)
 
     print("[*] Generating offline training distributions...")
     X, y = generate_training_data(2000)
@@ -107,7 +115,17 @@ def train_and_export(output: Path | None = None):
     # Persist the training medians so inference can generate an auditable,
     # per-transaction counterfactual explanation without external packages.
     model.marsar_feature_baseline_ = np.median(X_train, axis=0).astype(np.float32)
-    model.marsar_training_metadata_ = {
+
+    # BUG FIX: this was previously stored as `marsar_training_metadata_`
+    # (with "training" in the name), but app/ml/model_contract.py's
+    # validate_model_contract() checks for `marsar_metadata_` - one extra
+    # word meant every model this script ever produced silently failed
+    # its own contract check at inference time, always falling back to
+    # MLInferenceEngine's tiny embedded classifier. Renamed to match, and
+    # added the feature_schema key the contract actually validates against.
+    from app.ml.model_contract import FEATURE_SCHEMA_VERSION
+    model.marsar_metadata_ = {
+        "feature_schema": FEATURE_SCHEMA_VERSION,
         "dataset": "synthetic forensic baseline",
         "limitations": "Demonstration model only; not trained on the Elliptic dataset or a real-world benchmark.",
         "feature_space": "MARSAR dual-layer 13-feature schema",

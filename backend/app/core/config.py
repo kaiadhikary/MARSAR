@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import Set, Dict
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="MARSAR_", case_sensitive=True)
     """
     Application configuration for offline air-gapped forensic operations.
     Loads environment variables or defaults without remote network dependencies.
@@ -52,10 +53,6 @@ class Settings(BaseSettings):
         "ml": 0.25, "taint": 0.25, "anomaly": 0.20,
         "demixing": 0.20, "heuristics": 0.05, "network": 0.05,
     }
-
-    class Config:
-        case_sensitive = True
-
 
 settings = Settings()
 

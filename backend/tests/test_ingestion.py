@@ -27,10 +27,16 @@ def test_offline_geoip_resolution():
     assert country == "IR"
     assert "AS58224" in asn
 
-    # Fallback resolution for unseen IPs
+    # An IP with no matching entry in the loaded range database or the
+    # small illustrative example table honestly resolves to UNKNOWN rather
+    # than guessing - this is the documented design ("offline IPv4
+    # country/ASN resolver with an honest UNKNOWN fallback") and is what
+    # test_geoip_builder.py's test_country_asn_ranges_are_split_exactly
+    # already asserts for the same IP. Guessing "US" for an arbitrary
+    # unseen IP would be fabricating a value we don't actually have.
     country, asn = resolver.resolve("8.8.8.8")
-    assert country == "US"
-    assert "Google" in asn
+    assert country == "UNKNOWN"
+    assert asn == "UNKNOWN"
 
 
 def test_csv_parsing_and_db_ingest(temp_db):

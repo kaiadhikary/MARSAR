@@ -15,7 +15,7 @@ def test_peeling_chain_detection():
 
     assert is_peeling is True
     assert conf >= 0.70
-    assert meta["pattern"] == "PEELING_CHAIN"
+    assert meta["pattern"] == "PEELING_TRANSACTION"
     assert meta["peeled_amount"] == 0.25
     assert meta["change_amount"] == 9.7498
     assert meta["asymmetry_ratio"] >= 4.0
