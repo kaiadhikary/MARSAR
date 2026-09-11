@@ -5,3 +5,5 @@ build/
 dist/
 .env*.local
 *.log
+
+*.tsbuildinfo

@@ -146,7 +146,21 @@ def train_and_export(output: Path | None = None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train MARSAR's offline demonstration model.")
+    parser = argparse.ArgumentParser(description="Train MARSAR's offline ML weights.")
     parser.add_argument("--out", type=Path, help="Versioned output path. Defaults to the deployed weights path.")
+    parser.add_argument("--synthetic", action="store_true", help="Force synthetic demo data even if Elliptic CSVs exist.")
     args = parser.parse_args()
-    train_and_export(args.out)
+
+    elliptic_dir = Path(__file__).resolve().parent / "data" / "elliptic"
+    has_elliptic = (
+        not args.synthetic
+        and (elliptic_dir / "elliptic_txs_features.csv").exists()
+        and (elliptic_dir / "elliptic_txs_classes.csv").exists()
+    )
+    if has_elliptic:
+        from train_elliptic_real import train_elliptic_model, DEFAULT_OUT_ALIAS, DEFAULT_OUT_PRIMARY
+
+        outs = [args.out] if args.out else [DEFAULT_OUT_PRIMARY, DEFAULT_OUT_ALIAS]
+        train_elliptic_model(elliptic_dir, outs)
+    else:
+        train_and_export(args.out)

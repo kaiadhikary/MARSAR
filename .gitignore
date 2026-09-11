@@ -16,6 +16,11 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
+# Large ML Datasets & Weights
+**/data/elliptic/
+*.joblib
+*.bak
+
 # Node
 node_modules/
 .next/
