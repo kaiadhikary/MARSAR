@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { MarsarAlert } from "@/lib/types";
 import { formatScore100, relativeTime } from "@/lib/cn";
-import { patternKey, riskBand, typologyFromFlags } from "@/lib/risk";
+import { alertMatchesFocus, riskBand, typologyFromFlags } from "@/lib/risk";
 import { AlertDrawer } from "@/components/alerts/alert-drawer";
 import { Button } from "@/components/ui/button";
 import { RiskBadge } from "@/components/ui/risk-badge";
@@ -17,39 +17,58 @@ const SEVERITY = ["All", "Critical", "High", "Medium", "Low"] as const;
 const FOCUS = ["All", "ML", "Taint", "Anomaly", "Peeling", "CoinJoin", "Network"] as const;
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<MarsarAlert[] | null>(null);
+  const [alerts, setAlerts] = useState<MarsarAlert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sev, setSev] = useState<(typeof SEVERITY)[number]>("All");
   const [focus, setFocus] = useState<(typeof FOCUS)[number]>("All");
   const [selected, setSelected] = useState<MarsarAlert | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    api.alerts(200).then((r) => {
-      if (!r.data) setError(r.error || "failed");
-      setAlerts(r.data?.alerts || []);
+    api.alertSummary().then((r) => {
+      if (r.data?.counts) setCounts(r.data.counts);
     });
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.alerts(5000, focus).then((r) => {
+      if (cancelled) return;
+      if (!r.data) setError(r.error || "failed");
+      else setError(null);
+      setAlerts(r.data?.alerts || []);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [focus]);
+
   const rows = useMemo(() => {
-    if (!alerts) return [];
     return alerts.filter((a) => {
       const band = riskBand(a.risk_score);
       if (sev !== "All" && band !== sev.toLowerCase()) return false;
-      if (focus === "All") return true;
-      const key = patternKey(a.primary_focus_area, a.flags);
-      return key === focus.toLowerCase() || (focus === "CoinJoin" && key === "coinjoin");
+      return alertMatchesFocus(a, focus);
     });
   }, [alerts, sev, focus]);
 
-  if (alerts === null) {
-    return (
-      <div>
-        <h2 className="text-[15px] font-medium">Alerts</h2>
-        <div className="panel mt-4 rounded-md">
-          <SkeletonRows />
-        </div>
-      </div>
-    );
+  const severityCounts = useMemo(() => {
+    const next = { All: alerts.length, Critical: 0, High: 0, Medium: 0, Low: 0 };
+    for (const a of alerts) {
+      const band = riskBand(a.risk_score);
+      if (band === "critical") next.Critical += 1;
+      else if (band === "high") next.High += 1;
+      else if (band === "medium") next.Medium += 1;
+      else next.Low += 1;
+    }
+    return next;
+  }, [alerts]);
+
+  function focusCount(label: (typeof FOCUS)[number]) {
+    if (label === "All") return counts.all ?? alerts.length;
+    return counts[label.toLowerCase()];
   }
 
   return (
@@ -60,23 +79,45 @@ export default function AlertsPage() {
       </div>
       <div className="flex flex-wrap gap-1">
         {SEVERITY.map((f) => (
-          <Button key={f} size="sm" variant={sev === f ? "secondary" : "outline"} onClick={() => setSev(f)}>
+          <Button
+            key={f}
+            size="sm"
+            variant={sev === f ? "secondary" : "outline"}
+            onClick={() => setSev(f)}
+            className={cn(sev === f && "border-white/20")}
+          >
             {f}
+            <span className="font-mono text-[10px] text-ink-faint">{severityCounts[f]}</span>
           </Button>
         ))}
       </div>
       <div className="flex flex-wrap gap-1">
         {FOCUS.map((f) => (
-          <Button key={f} size="sm" variant={focus === f ? "secondary" : "ghost"} onClick={() => setFocus(f)}>
+          <Button
+            key={f}
+            size="sm"
+            variant={focus === f ? "secondary" : "outline"}
+            onClick={() => setFocus(f)}
+            className={cn("text-ink", focus === f && "border-white/20")}
+          >
             {f}
+            {focusCount(f) != null && (
+              <span className="font-mono text-[10px] text-ink-faint">{focusCount(f)}</span>
+            )}
           </Button>
         ))}
       </div>
       <div className="panel rounded-md">
-        {!rows.length ? (
+        {loading && !alerts.length ? (
+          <SkeletonRows />
+        ) : !rows.length ? (
           <EmptyState
-            title="NO ACTIVE ALERTS"
-            description="No suspicious transactions currently match your selected filters."
+            title={sev !== "All" ? `NO ${sev.toUpperCase()} ALERTS` : "NO MATCHING ALERTS"}
+            description={
+              sev !== "All"
+                ? `No ${sev.toLowerCase()}-severity findings in the ${focus === "All" ? "current" : focus} set. Composite scores on this corpus mostly land in Medium/Low.`
+                : `No alerts currently match the ${focus} engine filter.`
+            }
           />
         ) : (
           rows.map((a, i) => (

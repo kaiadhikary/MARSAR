@@ -34,6 +34,7 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
         src_ip = (tx["src_ip"] or "").strip()
         dst_ip = (tx["dst_ip"] or "").strip()
 
+        # 1. Transaction Node
         if txid not in seen_nodes:
             nodes.append({
                 "data": {
@@ -47,6 +48,7 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
             })
             seen_nodes.add(txid)
 
+        # 2. Network IP Node & P2P Edge
         if src_ip and src_ip != "UNKNOWN":
             ip_node_id = f"ip_{src_ip}"
             if ip_node_id not in seen_nodes:
@@ -71,6 +73,8 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
                 }
             })
 
+        # Preserve the receiving peer too: source and destination observations are
+        # distinct evidence in P2P traffic correlation.
         if dst_ip and dst_ip != "UNKNOWN":
             dst_node_id = f"ip_{dst_ip}"
             if dst_node_id not in seen_nodes:
@@ -86,6 +90,7 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
                 "dst_port": tx["dst_port"], "timestamp": tx["timestamp"]
             }})
 
+        # 3. Input Wallet Nodes & Ingress Edges (Wallet -> TX)
         try:
             inputs = json.loads(tx["inputs_json"])
         except (ValueError, TypeError):
@@ -106,6 +111,7 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
                     })
                     seen_nodes.add(addr)
 
+                # Append index to guarantee edge uniqueness for multi-input transactions
                 edges.append({
                     "data": {
                         "id": f"e_in_{addr}_{txid}_{idx}",
@@ -116,6 +122,7 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
                     }
                 })
 
+        # 4. Output Wallet Nodes & Egress Edges (TX -> Wallet)
         try:
             outputs = json.loads(tx["outputs_json"])
         except (ValueError, TypeError):
@@ -136,6 +143,7 @@ def get_graph_topology(limit_tx: int = Query(100, ge=1, le=500)):
                     })
                     seen_nodes.add(addr)
 
+                # Append index to guarantee edge uniqueness for multi-output transactions
                 edges.append({
                     "data": {
                         "id": f"e_out_{txid}_{addr}_{idx}",

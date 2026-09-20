@@ -4,6 +4,7 @@ from app.engine.demixing import LaunderingDetector
 def test_peeling_chain_detection():
     detector = LaunderingDetector()
 
+    # Typical peeling transaction: 1 input, 2 outputs with 1 small peel and 1 large change
     inputs = [{"address": "peel_source", "amount": 10.0}]
     outputs = [
         {"address": "cashout_exchange", "amount": 0.25},
@@ -23,6 +24,7 @@ def test_peeling_chain_detection():
 def test_balanced_transfer_not_peeling():
     detector = LaunderingDetector()
 
+    # Balanced payment (e.g. 50/50 split or small ratio)
     inputs = [{"address": "normal_wallet", "amount": 2.0}]
     outputs = [
         {"address": "dst_1", "amount": 1.1},
@@ -50,6 +52,7 @@ def test_linked_peeling_transactions_form_a_chain():
 def test_coinjoin_mixer_detection():
     detector = LaunderingDetector()
 
+    # Multi-party CoinJoin transaction with equal denominations
     inputs = [
         {"address": "user_a", "amount": 0.51},
         {"address": "user_b", "amount": 0.505},

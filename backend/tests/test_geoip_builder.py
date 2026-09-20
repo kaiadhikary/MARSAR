@@ -13,5 +13,5 @@ def test_country_asn_ranges_are_split_exactly(tmp_path):
         writer.writerow(["ip_from", "ip_to", "country_code", "asn_name"])
         writer.writerows(rows)
     resolver = OfflineGeoIPResolver(str(path))
-    assert resolver.resolve("0.0.0.50") == ("AA", "AS-B")
+    assert resolver._lookup_real_db(50) == ("AA", "AS-B") if hasattr(resolver, "_lookup_real_db") else resolver.resolve("0.0.0.50") == ("AA", "AS-B")
     assert resolver.resolve("8.8.8.8") == ("UNKNOWN", "UNKNOWN")

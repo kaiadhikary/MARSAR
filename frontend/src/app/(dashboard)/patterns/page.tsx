@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import type { MarsarAlert } from "@/lib/types";
-import { patternKey } from "@/lib/risk";
+import { alertMatchesFocus } from "@/lib/risk";
 import { Identifier } from "@/components/ui/identifier";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -35,20 +35,24 @@ function Patterns() {
   const [type, setType] = useState(initial);
 
   useEffect(() => {
-    api.alerts(200).then((r) => setAlerts(r.data?.alerts || []));
+    api.alerts(5000).then((r) => setAlerts(r.data?.alerts || []));
   }, []);
 
   const counts = useMemo(() => {
     const list = alerts || [];
     return {
-      peeling: list.filter((a) => patternKey(a.primary_focus_area, a.flags) === "peeling").length,
-      coinjoin: list.filter((a) => patternKey(a.primary_focus_area, a.flags) === "coinjoin").length,
-      anomaly: list.filter((a) => ["anomaly", "ml"].includes(patternKey(a.primary_focus_area, a.flags))).length,
-      network: list.filter((a) => patternKey(a.primary_focus_area, a.flags) === "network").length,
+      peeling: list.filter((a) => alertMatchesFocus(a, "Peeling")).length,
+      coinjoin: list.filter((a) => alertMatchesFocus(a, "CoinJoin")).length,
+      anomaly: list.filter((a) => alertMatchesFocus(a, "Anomaly") || alertMatchesFocus(a, "ML")).length,
+      network: list.filter((a) => alertMatchesFocus(a, "Network")).length,
     };
   }, [alerts]);
 
-  const rows = (alerts || []).filter((a) => !type || patternKey(a.primary_focus_area, a.flags) === type || (type === "anomaly" && patternKey(a.primary_focus_area, a.flags) === "ml"));
+  const rows = (alerts || []).filter((a) => {
+    if (!type) return true;
+    if (type === "anomaly") return alertMatchesFocus(a, "Anomaly") || alertMatchesFocus(a, "ML");
+    return alertMatchesFocus(a, type);
+  });
 
   if (!alerts) {
     return (

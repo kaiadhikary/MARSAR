@@ -33,7 +33,12 @@ class DisjointSetUnion:
 
 
 class EntityClusterEngine:
-    """Cluster wallets by common-input ownership. IP and graph similarity are evidence only."""
+    """
+    Entity clustering from Common-Input-Ownership only.
+    IP co-location and graph similarity are supporting evidence, not ownership merges.
+    """
+    MAX_EMBEDDING_NODES = 8_000
+
     def __init__(self, embedding_similarity_threshold: float = 0.88):
         self.dsu = DisjointSetUnion()
         self.address_to_ips: Dict[str, Set[str]] = {}
@@ -50,12 +55,9 @@ class EntityClusterEngine:
         self.co_occurrence[addr_b][addr_a] = self.co_occurrence[addr_b].get(addr_a, 0.0) + weight
 
     def _apply_graph_embeddings(self, all_addresses: List[str]) -> Dict[str, List[Dict[str, float]]]:
-        """
-        Derives low-dimensional node embeddings from the normalized graph adjacency matrix
-        and clusters wallets exhibiting topological interaction similarity.
-        """
+        """Build SVD embeddings and return high-similarity pairs as evidence only."""
         n = len(all_addresses)
-        if n < 4:
+        if n < 4 or n > self.MAX_EMBEDDING_NODES:
             return {}
 
         addr_idx = {addr: i for i, addr in enumerate(all_addresses)}

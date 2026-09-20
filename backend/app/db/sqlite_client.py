@@ -1,16 +1,13 @@
 import sqlite3
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 DB_PATH = Path(__file__).resolve().parent.parent.parent / "marsar_offline.db"
 
 
 def get_db_connection() -> sqlite3.Connection:
-    """
-    Returns an optimized SQLite connection configured for offline analytical querying.
-    Enables Write-Ahead Logging (WAL) and dictionary-like Row factory access.
-    """
+    """Return a WAL-enabled SQLite connection with Row factory."""
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
@@ -20,14 +17,10 @@ def get_db_connection() -> sqlite3.Connection:
 
 
 def init_db():
-    """
-    Initializes database schemas for dual-layer network and blockchain metadata,
-    entity clusters, illicit seed lists, and explainable investigative alerts.
-    """
+    """Create forensic tables and indices if missing, then seed watchlist."""
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 1. Dual-Layer Transactions (Network metadata + Blockchain ledger state)
     cur.execute('''
     CREATE TABLE IF NOT EXISTS transactions (
         txid TEXT PRIMARY KEY,
@@ -47,12 +40,10 @@ def init_db():
     );
     ''')
 
-    # Indices for high-speed graph correlation & temporal range queries
     cur.execute("CREATE INDEX IF NOT EXISTS idx_tx_timestamp ON transactions(timestamp);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_tx_src_ip ON transactions(src_ip);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_tx_country ON transactions(geo_country);")
 
-    # 2. Clustered Real-World Entities (Common-Input-Ownership + IP Co-location)
     cur.execute('''
     CREATE TABLE IF NOT EXISTS entity_clusters (
         cluster_id TEXT NOT NULL,
@@ -66,7 +57,6 @@ def init_db():
     if "evidence_json" not in cluster_columns:
         cur.execute("ALTER TABLE entity_clusters ADD COLUMN evidence_json TEXT NOT NULL DEFAULT '[]'")
 
-    # 3. Known Illicit Seeds (OFAC Sanctions, Ransomware Wallets, Darknet Cashouts)
     cur.execute('''
     CREATE TABLE IF NOT EXISTS illicit_seeds (
         address TEXT PRIMARY KEY,
@@ -76,15 +66,14 @@ def init_db():
     );
     ''')
 
-    # 4. Ranked, Explainable Investigative Leads & Forensic Alerts
     cur.execute('''
     CREATE TABLE IF NOT EXISTS alerts (
         alert_id TEXT PRIMARY KEY,
-        target_type TEXT NOT NULL,          -- 'txid', 'wallet', or 'ip'
+        target_type TEXT NOT NULL,
         target_identifier TEXT NOT NULL,
         risk_score REAL NOT NULL,
         confidence REAL NOT NULL,
-        primary_focus_area TEXT NOT NULL,   -- e.g. 'Peeling-Chain Detection', 'Mixing / CoinJoin'
+        primary_focus_area TEXT NOT NULL,
         anomaly_score REAL DEFAULT 0.0,
         taint_score REAL DEFAULT 0.0,
         peeling_chain_flag INTEGER DEFAULT 0,
@@ -96,18 +85,22 @@ def init_db():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_risk ON alerts(risk_score DESC);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_target ON alerts(target_identifier);")
 
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS ground_truth (
+        txid TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'elliptic'
+    );
+    ''')
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ground_truth_label ON ground_truth(label);")
+
     conn.commit()
     conn.close()
-
-    # Pre-populate known seeds if empty
     seed_initial_illicit_entities()
 
 
 def seed_initial_illicit_entities():
-    """
-    Populates default sanctions and ransomware seed addresses into the local database
-    if the illicit_seeds table is uninitialized.
-    """
+    """Insert default illicit seed addresses when the table is empty."""
     conn = get_db_connection()
     cur = conn.cursor()
     count = cur.execute("SELECT COUNT(*) FROM illicit_seeds").fetchone()[0]
@@ -130,18 +123,19 @@ def seed_initial_illicit_entities():
 
 
 def reset_database():
-    """Purges all records from analytical tables for a clean ingestion run."""
+    """Clear analytical tables for a fresh ingestion run."""
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM alerts;")
     cur.execute("DELETE FROM entity_clusters;")
+    cur.execute("DELETE FROM ground_truth;")
     cur.execute("DELETE FROM transactions;")
     conn.commit()
     conn.close()
 
 
 def fetch_all_transactions() -> List[Dict[str, Any]]:
-    """Retrieves all ingested transaction records with deserialized input/output arrays."""
+    """Return all transactions with deserialized inputs/outputs."""
     conn = get_db_connection()
     cur = conn.cursor()
     rows = cur.execute("SELECT * FROM transactions ORDER BY timestamp ASC").fetchall()
@@ -157,12 +151,12 @@ def fetch_all_transactions() -> List[Dict[str, Any]]:
 
 
 def fetch_ranked_alerts(limit: int = 50) -> List[Dict[str, Any]]:
-    """Retrieves alerts ordered by composite risk score with parsed explanation JSON."""
+    """Return alerts ordered by risk score with parsed explanation JSON."""
     conn = get_db_connection()
     cur = conn.cursor()
     rows = cur.execute('''
-        SELECT * FROM alerts 
-        ORDER BY risk_score DESC 
+        SELECT * FROM alerts
+        ORDER BY risk_score DESC
         LIMIT ?
     ''', (limit,)).fetchall()
     conn.close()

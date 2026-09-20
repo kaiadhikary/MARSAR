@@ -15,11 +15,13 @@ def scored_db(monkeypatch, tmp_path):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Pre-seed illicit OFAC address
     cur.execute('''
     INSERT OR REPLACE INTO illicit_seeds (address, category, severity)
     VALUES ('illicit_seed_1', 'RANSOMWARE', 1.0)
     ''')
 
+    # Seed transaction chain: illicit_seed_1 -> tx_hop_1 -> intermediary_wallet -> tx_hop_2 -> final_wallet
     cur.execute('''
     INSERT INTO transactions (
         txid, timestamp, src_ip, dst_ip, src_port, dst_port,
@@ -48,6 +50,7 @@ def scored_db(monkeypatch, tmp_path):
         4.9995, 4.9990
     ))
 
+    # Add extra benign transactions to allow IsolationForest variance
     for i in range(10):
         cur.execute('''
         INSERT INTO transactions (

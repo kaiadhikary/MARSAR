@@ -67,22 +67,13 @@ STEP 9. Watch the worker logs
     [WARNING] marsar.worker: 🟠 [SUSPICIOUS] TX: ... | Score: 40.0/100 | Flags: ...
     Give it 1–2 minutes to pick up live transactions.
 
-STEP 10. (Optional) Inspect the database while the worker runs
-    python check_db.py              -> lists all tables
-    python check_clusters.py        -> cluster counts/schema
-    python check_transactions.py    -> latest suspicious (CoinJoin) txs
-    python cluster_explorer.py      -> browse cluster addresses AND the
-                                        full Engine 5 score breakdown
-                                        (Taint/Typology/ML/Mixer) behind
-                                        recent or suspicious transactions,
-                                        plus the actual input/output
-                                        addresses of each transaction.
-                                        Interactive menu, or run directly:
-                                          python cluster_explorer.py --mode recent --limit 10
-                                          python cluster_explorer.py --mode suspicious --min-score 30
+STEP 10. (Optional) Inspect data while services run
+    curl http://127.0.0.1:8000/health
+    curl "http://127.0.0.1:8000/api/v1/alerts/ranked?limit=5"
 
 STEP 11. (Optional) Reset stored data if you want a clean slate
-    python reset_db.py              -> clears non-suspicious transactions
+    curl -X POST http://127.0.0.1:8000/api/v1/system/reset
+    python bootstrap_and_run.py --wipe-db
 
 STEP 11b. (Optional) Check that Engine 5 (the scoring system) is working
     Just run this one command:

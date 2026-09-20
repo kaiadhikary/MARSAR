@@ -82,10 +82,14 @@ function mapComplianceTx(row: ComplianceTx, extra?: Partial<TransactionRow>): Tr
 export const api = {
   health: () => request<HealthPayload>("/health"),
 
-  alerts: (limit = 80, focus?: string) => {
-    const qs = focus ? `&focus_area=${encodeURIComponent(focus)}` : "";
-    return request<{ total: number; alerts: MarsarAlert[] }>(`/api/v1/alerts/ranked?limit=${limit}${qs}`);
+  alerts: (limit = 5000, category?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (category && category !== "All") params.set("category", category.toLowerCase());
+    return request<{ total: number; alerts: MarsarAlert[] }>(`/api/v1/alerts/ranked?${params}`);
   },
+
+  alertSummary: () =>
+    request<{ total: number; counts: Record<string, number> }>("/api/v1/alerts/summary"),
 
   alert: (id: string) => request<MarsarAlert>(`/api/v1/alerts/${encodeURIComponent(id)}`),
 

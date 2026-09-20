@@ -1,37 +1,5 @@
 #!/usr/bin/env python3
-"""
-Single-command bootstrap for the whole MARSAR pipeline.
-
-Runs everything connected, in the right order, instead of you having to
-remember to run train_elliptic_xgboost.py, then tools/build_geoip_database.py,
-then run_offline_pipeline.py separately and hope their outputs actually line
-up (see the WEIGHTS_PATH mismatch this script's ensure_model_ready() guards
-against - training used to silently write to a file inference never read).
-
-Order of operations:
-  1. DB schema (init_db - idempotent, CREATE TABLE IF NOT EXISTS, never drops
-     data) + seed the illicit-address watchlist (INSERT OR IGNORE, safe to
-     repeat).
-  2. GeoIP: verify the offline resolver is actually loading real IP ranges,
-     not silently falling back to the 6-entry example table. If raw
-     IP2Location-format CSVs are sitting in data/raw_geoip/, builds the real
-     database automatically via tools/build_geoip_database.py. Never
-     fetches anything over the network either way - this stays fully
-     air-gapped.
-  3. ML: verify a valid, contract-passing model exists at the exact path
-     MLInferenceEngine reads from. If not, trains and exports one
-     automatically.
-  4. Dataset: uses --input if given, the bundled data/bitcoin_telemetry.csv
-     if present, otherwise generates a fresh synthetic dataset.
-  5. Ingestion -> clustering -> ML/demixing/anomaly/taint scoring -> ranked
-     alerts, same engines run_offline_pipeline.py uses.
-  6. Prints the top ranked leads.
-
-DESTRUCTIVE DB WIPE IS OPT-IN ONLY: reset_database() is never called unless
-you explicitly pass --wipe-db. Re-running this script is always safe by
-default - ingestion is INSERT OR REPLACE by txid, so nothing duplicates and
-nothing is lost.
-"""
+"""Single-command bootstrap for the MARSAR offline pipeline."""
 from __future__ import annotations
 
 import argparse
@@ -46,6 +14,7 @@ from app.db.sqlite_client import get_db_connection, init_db, reset_database
 from app.engine.alert_generator import generate_investigative_alerts
 from app.engine.clustering import EntityClusterEngine
 from app.ingestion.bulk_parser import BulkDataParser, OfflineGeoIPResolver
+from app.ingestion.elliptic_parser import EllipticDataParser, ELLIPTIC_DIR
 from app.ml.model_contract import validate_model_contract
 from generate_synthetic_dataset import generate_datasets
 
@@ -60,7 +29,7 @@ SEED_WATCHLIST = [
 
 
 def ensure_db_ready(wipe: bool) -> None:
-    init_db()  # idempotent - safe to call every run, never drops existing tables/data
+    init_db()
     if wipe:
         print("      --wipe-db passed: clearing existing transactions/clusters/alerts.")
         reset_database()
@@ -136,6 +105,12 @@ def ensure_model_ready(auto_train: bool) -> None:
 def main() -> None:
     cli = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     cli.add_argument("--input", help="CSV, JSON, or XML telemetry file. Defaults to bundled/synthetic data.")
+    cli.add_argument("--elliptic", action="store_true",
+                      help="Ingest the Elliptic Bitcoin dataset (backend/data/elliptic/) instead of telemetry.")
+    cli.add_argument("--elliptic-dir", type=Path, default=ELLIPTIC_DIR,
+                      help="Path to elliptic_txs_*.csv files (default: backend/data/elliptic).")
+    cli.add_argument("--elliptic-limit", type=int, default=None,
+                      help="Cap Elliptic ingestion to N labelled transactions (for quick tests).")
     cli.add_argument("--wipe-db", action="store_true",
                       help="DESTRUCTIVE: clear all existing transactions/clusters/alerts first. Off by default.")
     cli.add_argument("--no-auto-geoip", action="store_true", help="Don't auto-build the GeoIP database.")
@@ -157,24 +132,35 @@ def main() -> None:
 
     print("\n[4/6] Dataset...")
     data_dir = settings.DATA_DIR
-    if args.input:
-        input_target = Path(args.input).expanduser()
-        if not input_target.exists():
-            raise FileNotFoundError(f"Input dataset does not exist: {input_target}")
-        print(f"      Using: {input_target}")
-    else:
-        input_target = data_dir / "bitcoin_telemetry.csv"
-        if not input_target.exists():
-            print(f"      No dataset found - generating synthetic telemetry in {data_dir}...")
-            generate_datasets(str(data_dir))
-        else:
-            print(f"      Using bundled dataset: {input_target}")
+    use_elliptic = args.elliptic
 
     print("\n[5/6] Ingestion -> Clustering -> Detection -> Alerts...")
-    parser = BulkDataParser()
-    records = parser.parse_file(str(input_target))
-    ingested = parser.ingest_to_db(records)
-    print(f"      Ingested {ingested} transactions (safe to re-run - INSERT OR REPLACE by txid).")
+    if use_elliptic:
+        elliptic_dir = args.elliptic_dir.expanduser()
+        print(f"      Using Elliptic Bitcoin dataset: {elliptic_dir}")
+        elliptic_parser = EllipticDataParser(elliptic_dir)
+        ingested, gt_count = elliptic_parser.parse_and_ingest(limit=args.elliptic_limit)
+        print(f"      Ingested {ingested} Elliptic transactions ({gt_count} ground-truth labels stored).")
+        if elliptic_parser.rejected_records:
+            print(f"      Rejected {len(elliptic_parser.rejected_records)} malformed rows.")
+    else:
+        if args.input:
+            input_target = Path(args.input).expanduser()
+            if not input_target.exists():
+                raise FileNotFoundError(f"Input dataset does not exist: {input_target}")
+            print(f"      Using: {input_target}")
+        else:
+            input_target = data_dir / "bitcoin_telemetry.csv"
+            if not input_target.exists():
+                print(f"      No dataset found - generating synthetic telemetry in {data_dir}...")
+                generate_datasets(str(data_dir))
+            else:
+                print(f"      Using bundled dataset: {input_target}")
+
+        parser = BulkDataParser()
+        records = parser.parse_file(str(input_target))
+        ingested = parser.ingest_to_db(records)
+        print(f"      Ingested {ingested} transactions (safe to re-run - INSERT OR REPLACE by txid).")
 
     cluster_engine = EntityClusterEngine()
     clusters = cluster_engine.run_clustering()

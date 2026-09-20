@@ -45,7 +45,13 @@ export function AlertDrawer({ alert, onClose }: { alert: MarsarAlert; onClose: (
         </Section>
         <Section title="Network evidence">
           <p className="font-mono text-[12px] text-ink-muted">
-            {String(evidence.src_ip || "—")} · {String(evidence.country || "—")}
+            {String(
+              ((alert.evidence?.risk_attribution as Record<string, unknown> | undefined)?.network_origin as
+                | string
+                | undefined) ||
+                evidence.src_ip ||
+                "—"
+            )}
           </p>
         </Section>
         <Section title="Cluster information">

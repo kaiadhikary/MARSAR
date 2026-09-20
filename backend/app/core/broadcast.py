@@ -41,6 +41,7 @@ class LocalEventBroadcaster:
                 try:
                     queue.put_nowait(message)
                 except asyncio.QueueFull:
+                    # Drop slow consumer event to maintain ingestion throughput
                     pass
 
     def broadcast_sync(self, event_type: str, data: Dict[str, Any]):

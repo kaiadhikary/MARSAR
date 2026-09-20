@@ -1,9 +1,9 @@
-@"
 # Python
 venv/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 
 # Environment / secrets
 .env
@@ -33,4 +33,3 @@ dist/
 # IDE
 .vscode/
 .idea/
-"@ | Set-Content .gitignore

@@ -22,6 +22,7 @@ def trace_transaction_hop(txid: str):
     inputs = json.loads(tx["inputs_json"])
     outputs = json.loads(tx["outputs_json"])
 
+    # Trace backward: find transactions that supplied funds to input addresses
     in_addresses = [i["address"] for i in inputs if i.get("address")]
     backward_hops = []
     for addr in in_addresses:
@@ -32,6 +33,7 @@ def trace_transaction_hop(txid: str):
         for p_tx in prior_txs:
             backward_hops.append({"funding_txid": p_tx["txid"], "via_address": addr})
 
+    # Trace forward: find transactions spending the output addresses
     out_addresses = [o["address"] for o in outputs if o.get("address")]
     forward_hops = []
     for addr in out_addresses:

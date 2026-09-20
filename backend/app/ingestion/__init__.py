@@ -4,5 +4,6 @@ Provides multi-format bulk parsing (CSV, JSON, XML) and offline GeoIP/ASN resolu
 """
 
 from app.ingestion.bulk_parser import BulkDataParser, OfflineGeoIPResolver
+from app.ingestion.elliptic_parser import EllipticDataParser
 
-__all__ = ["BulkDataParser", "OfflineGeoIPResolver"]
+__all__ = ["BulkDataParser", "OfflineGeoIPResolver", "EllipticDataParser"]

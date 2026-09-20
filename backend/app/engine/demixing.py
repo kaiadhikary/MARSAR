@@ -114,6 +114,7 @@ class LaunderingDetector:
                 if amt > 0:
                     counts[amt] = counts.get(amt, 0) + 1
 
+            # Identify equal denominations
             equal_groups = {amt: cnt for amt, cnt in counts.items() if cnt >= 2}
 
             if equal_groups:

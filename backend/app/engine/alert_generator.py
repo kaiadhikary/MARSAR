@@ -12,17 +12,13 @@ from app.core.config import settings
 
 
 def generate_investigative_alerts() -> List[Dict[str, Any]]:
-    """
-    Executes all detection engines and aggregates findings into prioritized,
-    explainable alerts for BOTH transactions and suspect wallets.
-    """
+    """Run detection engines and aggregate ranked tx/wallet alerts."""
     detector = LaunderingDetector()
     heuristics = TransactionHeuristics()
     anomaly_detector = TransactionAnomalyDetector()
     risk_engine = RiskPropagationEngine()
     ml_engine = MLInferenceEngine()
 
-    # 1. Run Analytical Models
     anomaly_map = anomaly_detector.run_anomaly_detection()
     taint_map = risk_engine.propagate_taint()
 
@@ -40,9 +36,6 @@ def generate_investigative_alerts() -> List[Dict[str, Any]]:
     cur.execute("DELETE FROM alerts")
     generated_alerts = []
 
-    # -------------------------------------------------------------
-    # STAGE A: Transaction Alerts (Supervised ML + Anomaly + Demix)
-    # -------------------------------------------------------------
     for r in tx_rows:
         txid = r["txid"]
         inputs = json.loads(r["inputs_json"])
@@ -50,13 +43,11 @@ def generate_investigative_alerts() -> List[Dict[str, Any]]:
         country = r["geo_country"] or "UNKNOWN"
         asn = r["geo_asn"] or "UNKNOWN"
 
-        # Demixing
         is_peeling_transaction, peel_conf, peel_meta = detector.detect_peeling_chain(inputs, outputs)
         chain_meta = peeling_chains.get(txid)
         is_peeling = chain_meta is not None
         is_mixer, mix_conf, mix_meta = detector.detect_coinjoin_mixer(inputs, outputs)
 
-        # Rule Heuristics
         tx_dict = {
             "txid": txid,
             "inputs": inputs,
@@ -74,20 +65,16 @@ def generate_investigative_alerts() -> List[Dict[str, Any]]:
         heuristic_res = heuristics.evaluate(tx_dict)
         h_score = heuristic_res["heuristic_score"]
 
-        # Supervised ML Classification (app/ml/inference.py)
         ml_res = ml_engine.predict(tx_dict)
         ml_prob = ml_res["illicit_probability"]
 
-        # Unsupervised Outlier Anomaly Score
         anom_res = anomaly_map.get(txid, {"anomaly_score": None, "status": "unavailable"})
         anom_score = anom_res.get("anomaly_score")
         taint_score = taint_map.get(txid, 0.0)
 
-        # Geo/ASN Risk
         geo_risk = 0.85 if country in ("RU", "IR", "KP") else 0.0
         demix_conf = float(chain_meta["confidence"]) if is_peeling else (peel_conf if is_peeling_transaction else (mix_conf if is_mixer else 0.0))
 
-        # Unified Composite Risk
         component_scores = {"ml": ml_prob, "taint": taint_score, "anomaly": anom_score,
                             "demixing": demix_conf, "heuristics": h_score, "network": geo_risk}
         available_weights = sum(settings.RISK_WEIGHTS[name] for name, value in component_scores.items() if value is not None)
@@ -142,9 +129,6 @@ def generate_investigative_alerts() -> List[Dict[str, Any]]:
             ))
             generated_alerts.append({"alert_id": alert_id, "target": txid, "risk": composite_risk})
 
-    # -------------------------------------------------------------
-    # STAGE B: Wallet-Level Alerts (Tainted Wallets & Peel Cashouts)
-    # -------------------------------------------------------------
     wallet_scores: Dict[str, float] = {}
     for node, score in taint_map.items():
         if not node.startswith("tx_") and score >= 0.35:

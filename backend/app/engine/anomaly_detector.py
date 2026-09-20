@@ -59,10 +59,12 @@ class TransactionAnomalyDetector:
         X = self._extract_features(rows)
         self.model.fit(X)
 
+        # Raw scores: lower = more anomalous; invert to make higher = more anomalous
         raw_scores = -self.model.score_samples(X)
         min_s, max_s = raw_scores.min(), raw_scores.max()
         norm_scores = (raw_scores - min_s) / (max_s - min_s + 1e-6)
 
+        # Compute feature distribution statistics for explainability
         means = np.mean(X, axis=0)
         stds = np.std(X, axis=0) + 1e-6
 

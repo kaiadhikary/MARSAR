@@ -38,7 +38,7 @@ def test_inference_and_explainability():
         "total_input_btc": 10.0,
         "total_output_btc": 9.99,
         "fee": 0.01,
-        "dst_port": 54321,
+        "dst_port": 54321,  # Non-standard port
         "geo_asn": "AS12389",
         "geo_country": "RU",
         "script_type": "p2sh",
@@ -58,8 +58,9 @@ def test_forensic_integrity_hashing():
     digest = ForensicHasher.hash_payload(payload)
 
     assert isinstance(digest, str)
-    assert len(digest) == 64
+    assert len(digest) == 64  # SHA-256 hex string length
     assert ForensicHasher.verify_integrity(payload, digest) is True
 
+    # Tampering check
     tampered_payload = {"txid": "tx_abc_123", "risk_score": 0.200, "status": "CONFIRMED"}
     assert ForensicHasher.verify_integrity(tampered_payload, digest) is False

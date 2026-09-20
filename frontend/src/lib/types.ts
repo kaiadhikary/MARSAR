@@ -24,6 +24,8 @@ export interface AlertFlags {
   mixer_coinjoin?: boolean;
   anomaly_score?: number;
   taint_score?: number;
+  ml_score?: number | null;
+  network_score?: number | null;
 }
 
 export interface MarsarAlert {
