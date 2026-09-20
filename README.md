@@ -238,6 +238,14 @@ docker run -p 8000:8000 marsar-backend
 
 Runtime code makes no outbound network calls; GeoIP/ASN enrichment reads `data/geoip_database.csv` locally.
 
+## Team
+
+| Name | Role | GitHub |
+|---|---|---|
+| **Adarsh Satyajit Adhikary** (Kai) | Project Lead & Lead Backend Developer — defined the corrected SIH26146 scope, directed frontend and backend work, built the core backend (ingestion, clustering, scoring, ML, API) | [@kaidhikary](https://github.com/kaidhikary) |
+| **Raj Panigrahy** | Backend Developer | [@rajpanigrahy20-gif](https://github.com/rajpanigrahy20-gif) |
+| **Ayush Shashibhushan Tripathi** | Frontend Developer — built the full Next.js/Cytoscape dashboard | [@4yushtripathi](https://github.com/4yushtripathi) |
+
 ## Contributing
 
 Issues and pull requests are welcome. Please open an issue describing the change before submitting a large PR, and run `pytest` before pushing backend changes.
