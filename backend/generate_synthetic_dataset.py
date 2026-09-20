@@ -1,24 +1,5 @@
 #!/usr/bin/env python3
-"""
-Synthetic Dataset Generator for NTRO Problem Statement 5.
-Generates correlated Bitcoin network-layer telemetry and blockchain-layer ledger data
-in CSV, JSON, and XML formats matching required forensic fields.
-
-SCALED UP from the original 30-ish-transaction demo set to >=1000 transactions
-by default, entirely offline (no API calls, no downloads) - this only needs
-Python's own `random` module. Every IP used is drawn from the same 6 ranges
-already in data/geoip_database.csv (US/Cloudflare, DE/Tor, NL/WorldStream,
-SC/PrivateLayer, RU/Rostelecom, IR/TIC), so GeoIP resolution engages
-meaningfully across the whole dataset - not just the handful of illustrative
-anomaly examples.
-
-Also adds a scatter-gather (layering) pattern, which the original generator
-didn't produce at all despite the engine supporting detection for it, and a
-ground_truth.csv sidecar (txid -> injected pattern) so you can evaluate your
-own detector's precision/recall against known answers. That sidecar is never
-fed into the pipeline itself - a real detector obviously doesn't get the
-answer key, this is purely for your own evaluation.
-"""
+"""Generate offline CSV/JSON/XML Bitcoin telemetry plus a ground-truth sidecar."""
 
 import csv
 import json
@@ -27,8 +8,6 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# All 6 pools line up with the ranges in data/geoip_database.csv, so real
-# range-based GeoIP resolution is exercised across the whole dataset.
 GEO_POOLS = {
     "US": {"prefix": "104.28.", "asn": "AS13335 - Cloudflare"},
     "DE": {"prefix": "185.220.", "asn": "AS205100 - Tor Exit Node"},
@@ -37,10 +16,6 @@ GEO_POOLS = {
     "RU": {"prefix": "198.51.100.", "asn": "AS12389 - Rostelecom"},
     "IR": {"prefix": "203.0.113.", "asn": "AS58224 - TIC"},
 }
-# Benign traffic is weighted mostly toward "clean-looking" pools but
-# deliberately includes some RU/IR/DE traffic too - a real detector needs to
-# key off actual behavioral patterns (peeling, mixing, velocity), not just
-# "this IP's country looks suspicious", or the challenge is trivial.
 BENIGN_POOL_WEIGHTS = [("US", 35), ("NL", 30), ("SC", 15), ("RU", 10), ("IR", 5), ("DE", 5)]
 
 
@@ -82,7 +57,7 @@ def generate_datasets(
     ]
 
     records = []
-    ground_truth = []  # (txid, pattern, detail) - sidecar only, never ingested
+    ground_truth = []
     base_time = int(time.time()) - 500_000
     t = base_time
 
@@ -92,11 +67,8 @@ def generate_datasets(
         if pattern:
             ground_truth.append((kwargs["txid"], pattern, kwargs.get("_detail", "")))
 
-    # ---------------------------------------------------------------
-    # 1. Peeling-chain laundering (multiple independent chains)
-    # ---------------------------------------------------------------
     for chain_i in range(num_peeling_chains):
-        pool = random.choice(["RU", "IR", "DE"])  # laundering ops skew toward these pools
+        pool = random.choice(["RU", "IR", "DE"])
         geo = GEO_POOLS[pool]
         curr_addr = seeds[chain_i % len(seeds)]
         t += random.randint(200, 2000)
@@ -106,7 +78,7 @@ def generate_datasets(
             peeled = round(random.uniform(0.05, 0.30), 5)
             change = round(random.uniform(1.5, 3.0) - (hop * 0.25), 5)
             next_addr = f"addr_peel_change_c{chain_i}_hop_{hop + 1}"
-            t += random.randint(20, 90)  # rapid hops
+            t += random.randint(20, 90)
             emit(
                 "peeling_chain",
                 txid=txid, timestamp=t, src_ip=_random_ip(geo["prefix"]), dst_ip="104.28.16.5",
@@ -120,9 +92,6 @@ def generate_datasets(
             chain_txids.append(txid)
             curr_addr = next_addr
 
-    # ---------------------------------------------------------------
-    # 2. CoinJoin mixer topology (equal outputs across distinct parties)
-    # ---------------------------------------------------------------
     for i in range(num_coinjoin):
         pool = random.choice(["IR", "DE", "SC"])
         geo = GEO_POOLS[pool]
@@ -142,9 +111,6 @@ def generate_datasets(
             _detail=f"{n}-participant mix, denom={denom} BTC",
         )
 
-    # ---------------------------------------------------------------
-    # 3. Common-Input-Ownership (CIOH) consolidation signatures
-    # ---------------------------------------------------------------
     for i in range(num_cioh):
         pool = random.choice(list(GEO_POOLS.keys()))
         geo = GEO_POOLS[pool]
@@ -165,27 +131,20 @@ def generate_datasets(
             _detail=f"{n} inputs consolidated by one entity",
         )
 
-    # ---------------------------------------------------------------
-    # 4. Statistically unusual outlier transactions (Isolation Forest target)
-    # ---------------------------------------------------------------
     for i in range(num_outliers):
         t += random.randint(300, 3000)
         emit(
             "outlier",
             txid=f"tx_outlier_high_urgency_{i}_{random.randint(1000,9999)}", timestamp=t,
             src_ip=_random_ip(GEO_POOLS["DE"]["prefix"]), dst_ip="104.28.16.5",
-            src_port=random.randint(40000, 65000), dst_port=49152,  # non-standard P2P port
-            fee=round(random.uniform(0.02, 0.06), 5),  # urgently high miner fee
+            src_port=random.randint(40000, 65000), dst_port=49152,
+            fee=round(random.uniform(0.02, 0.06), 5),
             script_type="p2pkh", geo_country="DE", geo_asn=GEO_POOLS["DE"]["asn"],
             input_addresses=[_addr("anomalous_funder")], input_amounts=[round(random.uniform(0.1, 0.3), 5)],
             output_addresses=[_addr("anomalous_recipient")], output_amounts=[round(random.uniform(0.08, 0.25), 5)],
             _detail="non-standard port + urgent fee",
         )
 
-    # ---------------------------------------------------------------
-    # 5. Geo anomalies: a normally-benign wallet suddenly transacts from a
-    #    high-risk pool (impossible-travel / account-takeover signature)
-    # ---------------------------------------------------------------
     for i in range(num_geo_anomalies):
         pool = random.choice(["RU", "IR", "DE"])
         geo = GEO_POOLS[pool]
@@ -201,10 +160,6 @@ def generate_datasets(
             _detail=f"unexpected jump to {pool}",
         )
 
-    # ---------------------------------------------------------------
-    # 6. Scatter-gather / layering: 1 -> N fresh addresses -> 1 (NEW - the
-    #    original generator never produced this pattern at all)
-    # ---------------------------------------------------------------
     for i in range(num_scatter_gather):
         pool = random.choice(["RU", "IR", "SC"])
         geo = GEO_POOLS[pool]
@@ -227,7 +182,7 @@ def generate_datasets(
 
         gather_addr = _addr("gather_deposit")
         for addr in layer_addrs:
-            t += random.randint(60, 1800)  # converge within ~30 min
+            t += random.randint(60, 1800)
             spend = round(per_addr * 0.97, 5)
             emit(
                 "scatter_gather",
@@ -240,9 +195,6 @@ def generate_datasets(
                 _detail=f"converges into gather event {i} (source tx {scatter_txid})",
             )
 
-    # ---------------------------------------------------------------
-    # 7. Benign background payment traffic (the majority of the dataset)
-    # ---------------------------------------------------------------
     for i in range(num_benign):
         pool = _weighted_pool()
         geo = GEO_POOLS[pool]
@@ -250,7 +202,7 @@ def generate_datasets(
         out_amt = round(in_amt - random.uniform(0.00003, 0.0001), 5)
         t += random.randint(10, 600)
         emit(
-            None,  # not an injected anomaly - no ground-truth row
+            None,
             txid=f"tx_benign_transfer_{i:04d}_{random.randint(1000, 9999)}", timestamp=t,
             src_ip=_random_ip(geo["prefix"]), dst_ip="104.28.16.5",
             src_port=random.randint(30000, 60000), dst_port=8333,
@@ -260,12 +212,8 @@ def generate_datasets(
             output_addresses=[_addr("merchant_wallet")], output_amounts=[out_amt],
         )
 
-    # Shuffle so anomalies aren't clustered by generation order - a real
-    # bulk export wouldn't be sorted that way, and a detector shouldn't get
-    # a free hint from record position.
     random.shuffle(records)
 
-    # --- Write CSV ---
     csv_file = out_path / "bitcoin_telemetry.csv"
     with open(csv_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -282,7 +230,6 @@ def generate_datasets(
                 ";".join(map(str, r["input_amounts"])), ";".join(map(str, r["output_amounts"]))
             ])
 
-    # --- Write JSON ---
     json_file = out_path / "bitcoin_telemetry.json"
     json_data = []
     for r in records:
@@ -296,7 +243,6 @@ def generate_datasets(
     with open(json_file, "w", encoding="utf-8") as f:
         json.dump(json_data, f, indent=2)
 
-    # --- Write XML ---
     xml_file = out_path / "bitcoin_telemetry.xml"
     root = ET.Element("transactions")
     for r in records:
@@ -316,7 +262,6 @@ def generate_datasets(
             ET.SubElement(item, "amount").text = str(amt)
     ET.ElementTree(root).write(xml_file, encoding="utf-8", xml_declaration=True)
 
-    # --- Write ground truth sidecar (NOT part of the ingested dataset) ---
     gt_file = out_path / "ground_truth.csv"
     with open(gt_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)

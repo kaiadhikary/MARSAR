@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-"""
-Train MARSAR's deployed GradientBoosting classifier on the official Elliptic
-Bitcoin dataset and export artifacts compatible with MLInferenceEngine.
-
-Runtime contract (app/ml/feature_extractor.py):
-  13-dim vector, FEATURE_SCHEMA_VERSION = "blockchain_network_v1"
-  Feature names:
-    total_input_btc, total_output_btc, num_inputs, num_outputs, miner_fee,
-    fee_ratio, output_value_entropy, max_output_asymmetry, is_non_standard_port,
-    is_high_risk_asn, is_high_risk_country, script_type_code, hour_of_broadcast
-
-Elliptic CSV layout (no header in features file):
-  txId, time_step, local_feat_0..92 (93), agg_feat_0..71 (72)
-"""
+"""Train MARSAR classifier weights from the Elliptic dataset."""
 from __future__ import annotations
 
 import argparse
@@ -206,8 +193,6 @@ def train_elliptic_model(
     print(f"    Feature matrix shape: {X.shape}  ({', '.join(feature_names)})")
 
     if time_split:
-        # Canonical Elliptic temporal hold-out: time_step < 35 train, >= 35 test.
-        # Re-load time steps for the aligned rows only.
         features, labels = load_elliptic_tables(data_dir)
         steps = []
         for txid in features:
@@ -224,7 +209,6 @@ def train_elliptic_model(
             X, y, test_size=test_size, random_state=random_state, stratify=y
         )
 
-    # Balance illicit under-representation with sample weights.
     weight_map = {
         0: 1.0,
         1: float((y_train == 0).sum()) / max(1, (y_train == 1).sum()),

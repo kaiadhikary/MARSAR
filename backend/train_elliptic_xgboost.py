@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-Offline Model Training & Serialization Script.
-Trains a Gradient Boosted Decision Tree on synthetic/Elliptic forensic feature vectors
-and exports the serialized binary weights to app/ml/weights/elliptic_xgb.joblib.
-"""
+"""Train and export MARSAR offline classifier weights."""
 
 import argparse
 import json
@@ -17,26 +13,9 @@ from sklearn.model_selection import train_test_split
 
 
 def generate_training_data(n_samples: int = 1500):
-    """
-    Generates synthetic forensic distributions across the 13 feature dimensions:
-    1. total_input_btc
-    2. total_output_btc
-    3. num_inputs
-    4. num_outputs
-    5. miner_fee
-    6. fee_ratio
-    7. output_value_entropy
-    8. max_output_asymmetry
-    9. is_non_standard_port
-    10. is_high_risk_asn
-    11. is_high_risk_country
-    12. script_type_code
-    13. hour_of_broadcast
-    """
     np.random.seed(42)
     half = n_samples // 2
 
-    # --- Class 0: Licit Normal Transactions ---
     c0_in_btc = np.random.exponential(scale=0.8, size=half) + 0.001
     c0_out_btc = c0_in_btc * np.random.uniform(0.98, 0.999, size=half)
     c0_n_in = np.random.choice([1, 2, 3], size=half, p=[0.7, 0.2, 0.1])
@@ -57,15 +36,14 @@ def generate_training_data(n_samples: int = 1500):
     ])
     y_licit = np.zeros(half, dtype=int)
 
-    # --- Class 1: Illicit Patterns (Peeling chains, mixers, rapid layering) ---
     c1_in_btc = np.random.exponential(scale=4.5, size=half) + 0.1
     c1_out_btc = c1_in_btc * np.random.uniform(0.95, 0.99, size=half)
     c1_n_in = np.random.choice([1, 3, 5, 8], size=half, p=[0.4, 0.3, 0.2, 0.1])
     c1_n_out = np.random.choice([2, 4, 8], size=half, p=[0.5, 0.3, 0.2])
-    c1_fee = c1_in_btc * np.random.uniform(0.005, 0.04, size=half)  # Urgent fees
+    c1_fee = c1_in_btc * np.random.uniform(0.005, 0.04, size=half)
     c1_fee_ratio = c1_fee / c1_in_btc
-    c1_entropy = np.random.choice([0.1, 2.2], size=half)  # Peeling (low) or mixer (high)
-    c1_asym = np.random.uniform(5.0, 60.0, size=half)     # High asymmetry
+    c1_entropy = np.random.choice([0.1, 2.2], size=half)
+    c1_asym = np.random.uniform(5.0, 60.0, size=half)
     c1_port = np.random.choice([0.0, 1.0], size=half, p=[0.4, 0.6])
     c1_asn = np.random.choice([0.0, 1.0], size=half, p=[0.2, 0.8])
     c1_country = np.random.choice([0.0, 1.0], size=half, p=[0.25, 0.75])
@@ -84,14 +62,6 @@ def generate_training_data(n_samples: int = 1500):
 
 
 def train_and_export(output: Path | None = None):
-    # BUG FIX: this used to default to app/ml/weights/elliptic_xgb.joblib,
-    # but app/core/config.py's settings.WEIGHTS_PATH (what MLInferenceEngine
-    # actually loads from) points at bitcoin_network_gbdt.joblib - a
-    # different filename. Training "succeeded" and printed a real ROC-AUC,
-    # but the inference engine could never find that file and silently fell
-    # back to its tiny 6-sample embedded fallback model every single time,
-    # regardless of training. Defaulting to the same settings.WEIGHTS_PATH
-    # both sides use closes that gap.
     from app.core.config import settings
     weights_path = output or settings.WEIGHTS_PATH
     weights_path.parent.mkdir(parents=True, exist_ok=True)
@@ -112,17 +82,7 @@ def train_and_export(output: Path | None = None):
         random_state=42
     )
     model.fit(X_train, y_train)
-    # Persist the training medians so inference can generate an auditable,
-    # per-transaction counterfactual explanation without external packages.
     model.marsar_feature_baseline_ = np.median(X_train, axis=0).astype(np.float32)
-
-    # BUG FIX: this was previously stored as `marsar_training_metadata_`
-    # (with "training" in the name), but app/ml/model_contract.py's
-    # validate_model_contract() checks for `marsar_metadata_` - one extra
-    # word meant every model this script ever produced silently failed
-    # its own contract check at inference time, always falling back to
-    # MLInferenceEngine's tiny embedded classifier. Renamed to match, and
-    # added the feature_schema key the contract actually validates against.
     from app.ml.model_contract import FEATURE_SCHEMA_VERSION
     model.marsar_metadata_ = {
         "feature_schema": FEATURE_SCHEMA_VERSION,
@@ -132,14 +92,12 @@ def train_and_export(output: Path | None = None):
         "model": "sklearn GradientBoostingClassifier",
     }
 
-    # Evaluate
     preds = model.predict(X_test)
     probs = model.predict_proba(X_test)[:, 1]
     auc = roc_auc_score(y_test, probs)
     print(f"[+] ROC-AUC Score: {auc:.4f}")
     print("\nClassification Report:\n", classification_report(y_test, preds))
 
-    # Export weights
     joblib.dump(model, weights_path, compress=3)
     print(f"[+] Model weights serialized to: {weights_path}")
     print(f"[+] Binary size: {os.path.getsize(weights_path) / 1024:.2f} KB")

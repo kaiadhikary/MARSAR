@@ -33,13 +33,7 @@ class DisjointSetUnion:
 
 
 class EntityClusterEngine:
-    """
-    NTRO Focus Area 1: Entity Clustering.
-    Produces ownership clusters only from Common-Input-Ownership evidence.
-    IP co-location and graph similarity are retained as supporting evidence, but
-    never silently merged into an ownership conclusion (shared exchange and
-    hosting infrastructure would otherwise over-merge unrelated wallets).
-    """
+    """Cluster wallets by common-input ownership. IP and graph similarity are evidence only."""
     def __init__(self, embedding_similarity_threshold: float = 0.88):
         self.dsu = DisjointSetUnion()
         self.address_to_ips: Dict[str, Set[str]] = {}
@@ -75,17 +69,13 @@ class EntityClusterEngine:
                         j = addr_idx[dst]
                         adj_matrix[i, j] = weight
 
-        # SVD Graph Embedding
         dim = min(8, n - 1)
         svd = TruncatedSVD(n_components=dim, random_state=42)
         embeddings = svd.fit_transform(adj_matrix)
 
-        # Normalize embeddings to unit hypersphere
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-8
         norm_embeddings = embeddings / norms
 
-        # Similarity is retained as supporting evidence. It does not prove
-        # ownership and therefore must not union two wallets by itself.
         evidence: Dict[str, List[Dict[str, float]]] = {}
         for i in range(n):
             for j in range(i + 1, n):
@@ -121,25 +111,20 @@ class EntityClusterEngine:
                         self.ip_to_addresses[src_ip] = set()
                     self.ip_to_addresses[src_ip].add(addr)
 
-            # Heuristic 1: CIOH
             if len(input_addrs) > 1:
                 base_addr = input_addrs[0]
                 for co_input in input_addrs[1:]:
                     self.dsu.union(base_addr, co_input)
                     self._record_co_occurrence(base_addr, co_input, weight=2.0)
 
-            # Topological interaction edges for Graph Embeddings
             for in_a in input_addrs:
                 for out_a in output_addrs:
                     all_addresses.add(out_a)
                     self.dsu.find(out_a)
                     self._record_co_occurrence(in_a, out_a, weight=1.0)
 
-        # Execute graph embedding analysis as supporting evidence. It is never
-        # used as a standalone ownership merge.
         embedding_evidence = self._apply_graph_embeddings(sorted(all_addresses))
 
-        # Compile clusters
         clusters: Dict[str, List[str]] = {}
         for addr in all_addresses:
             root = self.dsu.find(addr)
@@ -153,8 +138,6 @@ class EntityClusterEngine:
             for addr in addresses:
                 ips = self.address_to_ips.get(addr, set())
                 primary_ip = next(iter(ips)) if ips else "UNKNOWN"
-                # CIOH is strong evidence. A repeated observed IP adds modest
-                # support only; it never creates or expands this cluster.
                 shared_ip_support = any(len(self.ip_to_addresses.get(ip, set())) > 1 for ip in ips)
                 confidence = 0.95 if len(addresses) > 1 else 0.70
                 if shared_ip_support:

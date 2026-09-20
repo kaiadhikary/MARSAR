@@ -10,19 +10,19 @@ class FeatureExtractor:
     forensic features for offline machine learning inference.
     """
     FEATURE_NAMES = [
-        "total_input_btc",          # Aggregate input value
-        "total_output_btc",         # Aggregate output value
-        "num_inputs",               # In-degree / fan-in
-        "num_outputs",              # Out-degree / fan-out
-        "miner_fee",                # Absolute transaction fee
-        "fee_ratio",                # Fee divided by total transacted value
-        "output_value_entropy",     # Uniformity/dispersion across outputs
-        "max_output_asymmetry",     # Asymmetry ratio between highest & lowest outputs
-        "is_non_standard_port",     # Flag: non-standard Bitcoin P2P port
-        "is_high_risk_asn",         # Flag: high-risk Autonomous System Number
-        "is_high_risk_country",     # Flag: high-risk jurisdiction
-        "script_type_code",         # Encoded output script type
-        "hour_of_broadcast"         # Time of day (UTC hour 0-23)
+        "total_input_btc",
+        "total_output_btc",
+        "num_inputs",
+        "num_outputs",
+        "miner_fee",
+        "fee_ratio",
+        "output_value_entropy",
+        "max_output_asymmetry",
+        "is_non_standard_port",
+        "is_high_risk_asn",
+        "is_high_risk_country",
+        "script_type_code",
+        "hour_of_broadcast",
     ]
     FEATURE_SCHEMA_VERSION = FEATURE_SCHEMA_VERSION
 
@@ -62,7 +62,6 @@ class FeatureExtractor:
         fee = float(tx.get("fee") or 0.0001)
         fee_ratio = fee / total_in
 
-        # Output dispersion & asymmetry
         entropy = self._calculate_entropy(out_amts)
         asymmetry = 1.0
         if len(out_amts) >= 2:
@@ -70,7 +69,6 @@ class FeatureExtractor:
             if min_o > 0:
                 asymmetry = max_o / min_o
 
-        # Network layer features
         dst_port = int(tx.get("dst_port") or 8333)
         non_std_port = 1.0 if dst_port not in self.STANDARD_PORTS else 0.0
 

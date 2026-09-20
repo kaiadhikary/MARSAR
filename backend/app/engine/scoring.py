@@ -25,14 +25,12 @@ class RiskPropagationEngine:
             inputs = json.loads(r["inputs_json"])
             outputs = json.loads(r["outputs_json"])
 
-            # Edge: Input Wallet -> TXID
             for inp in inputs:
                 addr = inp.get("address")
                 amt = float(inp.get("amount") or 0.0)
                 if addr:
                     self.graph.add_edge(addr, txid, weight=amt)
 
-            # Edge: TXID -> Output Wallet
             for out in outputs:
                 addr = out.get("address")
                 amt = float(out.get("amount") or 0.0)

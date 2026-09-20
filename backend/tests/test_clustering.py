@@ -26,7 +26,6 @@ def test_cioh_entity_clustering(clustered_db):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # TX 1: wallet_1 and wallet_2 spent together (CIOH link)
     cur.execute('''
     INSERT INTO transactions (
         txid, timestamp, src_ip, dst_ip, src_port, dst_port,
@@ -41,7 +40,6 @@ def test_cioh_entity_clustering(clustered_db):
         1.5, 1.4999
     ))
 
-    # TX 2: wallet_2 and wallet_3 spent together -> Transitively links wallet_1, wallet_2, wallet_3
     cur.execute('''
     INSERT INTO transactions (
         txid, timestamp, src_ip, dst_ip, src_port, dst_port,
@@ -67,5 +65,4 @@ def test_cioh_entity_clustering(clustered_db):
     c3 = conn.execute("SELECT cluster_id FROM entity_clusters WHERE wallet_address = 'wallet_3'").fetchone()[0]
     conn.close()
 
-    # All three addresses must be merged into the exact same entity cluster
     assert c1 == c2 == c3

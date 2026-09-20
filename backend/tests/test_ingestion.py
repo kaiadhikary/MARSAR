@@ -19,7 +19,6 @@ def temp_db(monkeypatch, tmp_path):
 def test_offline_geoip_resolution():
     resolver = OfflineGeoIPResolver()
 
-    # Production DB-IP ranges take precedence over the small example table.
     country, asn = resolver.resolve("8.8.8.8")
     assert country == "US"
     assert asn == "UNKNOWN"  # country-only DB-IP lite has no ASN column
@@ -28,7 +27,6 @@ def test_offline_geoip_resolution():
     assert country == "AU"
     assert asn == "UNKNOWN"
 
-    # RFC5737 documentation ranges resolve via the loaded range table.
     country, asn = resolver.resolve("198.51.100.15")
     assert country in {"UNKNOWN", "RU"}
     assert isinstance(asn, str)
@@ -55,7 +53,6 @@ def test_csv_parsing_and_db_ingest(temp_db):
     assert len(records[0]["inputs"]) == 2
     assert len(records[0]["outputs"]) == 1
 
-    # Test database commitment
     count = parser.ingest_to_db(records)
     assert count == 1
 
@@ -71,7 +68,6 @@ def test_csv_parsing_and_db_ingest(temp_db):
 def test_json_and_xml_parsing():
     parser = BulkDataParser()
 
-    # JSON test
     json_data = [{
         "txid": "tx_json_1",
         "timestamp": 1700001000,
@@ -96,7 +92,6 @@ def test_json_and_xml_parsing():
     assert len(records_json) == 1
     assert records_json[0]["txid"] == "tx_json_1"
 
-    # XML test
     xml_content = """<transactions>
         <transaction>
             <txid>tx_xml_1</txid>

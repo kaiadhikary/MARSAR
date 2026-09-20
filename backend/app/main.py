@@ -22,7 +22,6 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Enable CORS for local dashboards and link-analysis graph viewers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,19 +30,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount modular API endpoints (/auth, /alerts, /graph, /trace, /compliance)
 app.include_router(api_v1_router, prefix=settings.API_V1_STR)
 
 
 @app.on_event("startup")
 def on_startup():
-    """Initializes local SQLite schemas and seeds default sanctions tables on launch."""
     init_db()
 
 
 @app.get("/", tags=["System Status"])
 def root() -> Dict[str, Any]:
-    """Root status endpoint reporting system operational parameters."""
     return {
         "system": settings.PROJECT_NAME,
         "version": "2.0.0",
@@ -61,7 +57,6 @@ def root() -> Dict[str, Any]:
 
 @app.get("/health", tags=["System Status"])
 def health_check() -> Dict[str, Any]:
-    """Verifies SQLite integrity and reports database row counts across all analytical tables."""
     try:
         conn = get_db_connection()
         tx_count = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
@@ -89,16 +84,11 @@ def health_check() -> Dict[str, Any]:
 
 @app.get("/dashboard", include_in_schema=False)
 def dashboard() -> FileResponse:
-    """Serve the self-contained local dashboard; it makes no remote requests."""
     return FileResponse(Path(__file__).parent / "dashboard.html")
 
 
 @app.post(f"{settings.API_V1_STR}/ingest/file", tags=["Data Ingestion"])
 async def ingest_bulk_metadata_file(file: UploadFile = File(...)) -> Dict[str, Any]:
-    """
-    Ingests bulk Bitcoin network telemetry and blockchain transaction records 
-    from an offline CSV, JSON, or XML file.
-    """
     filename = file.filename.lower()
     suffix = Path(filename).suffix
 
@@ -133,20 +123,9 @@ async def ingest_bulk_metadata_file(file: UploadFile = File(...)) -> Dict[str, A
 
 @app.post(f"{settings.API_V1_STR}/pipeline/run", tags=["Pipeline Execution"])
 def execute_offline_pipeline() -> Dict[str, Any]:
-    """
-    Executes the analytical pipeline sequentially:
-    1. Runs Common-Input-Ownership (CIOH) & IP co-location clustering.
-    2. Runs Isolation Forest statistical anomaly detection.
-    3. Detects peeling chains and CoinJoin mixer structures.
-    4. Propagates taint decay across transaction graph edges.
-    5. Compiles and ranks explainable investigative alerts.
-    """
     try:
-        # Step 1: Cluster entities
         cluster_engine = EntityClusterEngine()
         clusters = cluster_engine.run_clustering()
-
-        # Step 2: Run all detection engines and aggregate alerts
         alerts = generate_investigative_alerts()
 
         return {
@@ -163,6 +142,5 @@ def execute_offline_pipeline() -> Dict[str, Any]:
 
 @app.post(f"{settings.API_V1_STR}/system/reset", tags=["System Maintenance"])
 def purge_database() -> Dict[str, str]:
-    """Purges all transactions, clusters, and generated alerts for a clean forensic run."""
     reset_database()
     return {"status": "success", "message": "Analytical database purged successfully."}

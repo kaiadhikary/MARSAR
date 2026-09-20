@@ -6,31 +6,22 @@ from app.reports.hashing import ForensicHasher
 
 
 class EvidenceCollector:
-    """
-    Aggregates multi-source forensic evidence for a flagged transaction or wallet:
-    - Correlated network-layer telemetry (IP, Port, GeoIP, ASN)[cite: 2]
-    - Blockchain transaction-layer flows (Inputs, Outputs, Fees)[cite: 2]
-    - Entity cluster associations (CIOH groupings)[cite: 2]
-    - AI/ML anomaly attribution and taint propagation chains[cite: 2]
-    """
+    """Build a sealed forensic dossier for a flagged transaction."""
 
     def collect_tx_dossier(self, txid: str) -> Optional[Dict[str, Any]]:
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # 1. Fetch transaction and network telemetry
         tx_row = cur.execute("SELECT * FROM transactions WHERE txid = ?", (txid,)).fetchone()
         if not tx_row:
             conn.close()
             return None
 
-        # 2. Fetch associated alert & ML scores
         alert_row = cur.execute(
             "SELECT * FROM alerts WHERE target_identifier = ? ORDER BY risk_score DESC LIMIT 1",
             (txid,)
         ).fetchone()
 
-        # 3. Fetch cluster context for input addresses
         inputs = json.loads(tx_row["inputs_json"])
         outputs = json.loads(tx_row["outputs_json"])
 
@@ -52,7 +43,6 @@ class EvidenceCollector:
 
         conn.close()
 
-        # Unpack alert metadata
         explanation = json.loads(alert_row["explanation_json"]) if alert_row else {}
 
         dossier = {
@@ -95,6 +85,5 @@ class EvidenceCollector:
             }
         }
 
-        # Seal evidence with chain-of-custody digest
         dossier["chain_of_custody_hash"] = ForensicHasher.hash_payload(dossier)
         return dossier
