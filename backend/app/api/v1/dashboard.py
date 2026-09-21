@@ -146,5 +146,5 @@ def export_str_report(request: ExportRequest):
 
 @public_router.post("/compliance/export-str")
 def export_str_report_alias(request: ExportRequest):
-    """Alias for POST /export-str (Engine 6 compatibility)."""
+    """Alias for POST /export-str."""
     return export_str_report(request)

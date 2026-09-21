@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Offline CLI pipeline: ingest -> cluster -> detect -> ranked alerts."""
 
-import sys
 import json
 import argparse
 from pathlib import Path

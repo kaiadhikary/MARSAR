@@ -8,7 +8,7 @@ from app.reports.hashing import ForensicHasher
 class ReportGenerator:
     """
     Renders standalone Suspicious Transaction Reports (STR) into HTML and Markdown.
-    Runs entirely offline without external CDN stylesheets or remote assets[cite: 2].
+    Runs entirely offline without external CDN stylesheets or remote assets.
     """
 
     def __init__(self):

@@ -29,6 +29,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[
+        "X-TXID",
+        "X-Risk-Score",
+        "X-Verdict",
+        "X-Evidence-SHA256",
+        "X-Generated-At",
+    ],
 )
 
 app.include_router(api_v1_router, prefix=settings.API_V1_STR)

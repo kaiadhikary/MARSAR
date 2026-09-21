@@ -6,7 +6,6 @@ and exports the serialized binary weights to app/ml/weights/elliptic_xgb.joblib.
 """
 
 import argparse
-import json
 import os
 from pathlib import Path
 import joblib
@@ -143,6 +142,11 @@ def train_and_export(output: Path | None = None):
     joblib.dump(model, weights_path, compress=3)
     print(f"[+] Model weights serialized to: {weights_path}")
     print(f"[+] Binary size: {os.path.getsize(weights_path) / 1024:.2f} KB")
+    alias = Path(__file__).resolve().parent / "app" / "ml" / "weights" / "elliptic_xgb.joblib"
+    if alias.resolve() != weights_path.resolve():
+        alias.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(model, alias, compress=3)
+        print(f"[+] Alias weights serialized to: {alias}")
 
 
 if __name__ == "__main__":

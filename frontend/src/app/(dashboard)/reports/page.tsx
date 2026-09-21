@@ -78,7 +78,8 @@ export default function ReportsPage() {
       <div>
         <h2 className="text-[15px] font-medium tracking-tight">Investigation dossier</h2>
         <p className="mt-1 text-[12px] text-ink-muted">
-          Generate a tamper-evident STR from a resolved transaction in the local evidence store.
+          Generate a tamper-evident STR from a transaction already ingested by the offline pipeline
+          (synthetic, Elliptic, or uploaded CSV/JSON/XML). IDs do not need to be 64-character hex.
         </p>
       </div>
 
@@ -101,7 +102,7 @@ export default function ReportsPage() {
           <input
             value={txid}
             onChange={(e) => setTxid(e.target.value.trim())}
-            placeholder="64-character transaction ID"
+            placeholder="Transaction ID from the local store"
             className="h-9 min-w-[240px] flex-1 rounded-sm border border-white/[0.08] bg-transparent px-2 font-mono text-[12px] outline-none"
           />
           <ShimmerButton loading={busy} disabled={!txid} onClick={() => generate(txid)}>
