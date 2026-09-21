@@ -16,10 +16,14 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
-# Large ML Datasets & Weights
+# Large ML Datasets (weights in app/ml/weights/ are shipped)
 **/data/elliptic/
 *.joblib
+!backend/app/ml/weights/*.joblib
 *.bak
+
+# Worker runtime
+.processed_files.txt
 
 # Node
 node_modules/

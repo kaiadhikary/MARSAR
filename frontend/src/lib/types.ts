@@ -161,8 +161,18 @@ export interface ComplianceTx {
   is_coinjoin?: boolean | number | null;
   typology_flags?: string | null;
   fee_rate?: number | null;
+  fee?: number | null;
   shannon_entropy?: number | null;
   created_at?: number | null;
+  timestamp?: number | null;
+  src_ip?: string;
+  dst_ip?: string;
+  country?: string;
+  asn?: string;
+  inputs?: number;
+  outputs?: number;
+  amount?: number;
+  alert_id?: string | null;
 }
 
 export interface HtmlReport {

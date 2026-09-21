@@ -31,20 +31,47 @@ def _transaction_view(row, alert=None):
     evidence = json.loads(alert["explanation_json"]) if alert else {}
     attribution = evidence.get("risk_attribution", {})
     components = attribution.get("risk_components", {})
-    tx = {"inputs": json.loads(row["inputs_json"]), "outputs": json.loads(row["outputs_json"]),
-          "total_input_btc": row["total_input_btc"], "total_output_btc": row["total_output_btc"], "fee": row["fee"],
-          "dst_port": row["dst_port"], "geo_asn": row["geo_asn"], "geo_country": row["geo_country"],
-          "script_type": row["script_type"], "timestamp": row["timestamp"]}
+    inputs = json.loads(row["inputs_json"])
+    outputs = json.loads(row["outputs_json"])
+    tx = {
+        "inputs": inputs,
+        "outputs": outputs,
+        "total_input_btc": row["total_input_btc"],
+        "total_output_btc": row["total_output_btc"],
+        "fee": row["fee"],
+        "dst_port": row["dst_port"],
+        "geo_asn": row["geo_asn"],
+        "geo_country": row["geo_country"],
+        "script_type": row["script_type"],
+        "timestamp": row["timestamp"],
+    }
     vector, names = FeatureExtractor().extract_from_record(tx)
     score = float(alert["risk_score"]) if alert else None
     return {
-        "txid": row["txid"], "cluster_id": None, "risk_score": round(score, 4) if score is not None else None,
+        "txid": row["txid"],
+        "cluster_id": None,
+        "risk_score": round(score, 4) if score is not None else None,
         "risk_verdict": "HIGH_RISK" if score is not None and score >= 0.70 else "SUSPICIOUS" if score is not None and score >= 0.35 else "UNSCORED",
-        "ml_probability": attribution.get("ml_classifier_probability"), "taint_score": attribution.get("seed_taint_score"),
-        "typology_score": components.get("demixing"), "mixer_penalty_score": components.get("demixing"),
-        "is_coinjoin": bool(alert["mixer_flag"]) if alert else None, "blacklist_hit": None,
-        "typology_flags": alert["primary_focus_area"] if alert else None, "fee_rate": row["fee"],
-        "shannon_entropy": float(vector[names.index("output_value_entropy")]), "created_at": row["timestamp"],
+        "ml_probability": attribution.get("ml_classifier_probability"),
+        "taint_score": attribution.get("seed_taint_score"),
+        "typology_score": components.get("demixing"),
+        "mixer_penalty_score": components.get("demixing"),
+        "is_coinjoin": bool(alert["mixer_flag"]) if alert else None,
+        "blacklist_hit": None,
+        "typology_flags": alert["primary_focus_area"] if alert else None,
+        "fee_rate": row["fee"],
+        "fee": row["fee"],
+        "shannon_entropy": float(vector[names.index("output_value_entropy")]),
+        "created_at": row["timestamp"],
+        "timestamp": row["timestamp"],
+        "src_ip": row["src_ip"],
+        "dst_ip": row["dst_ip"],
+        "country": row["geo_country"],
+        "asn": row["geo_asn"],
+        "inputs": len(inputs),
+        "outputs": len(outputs),
+        "amount": float(row["total_input_btc"] or 0.0),
+        "alert_id": alert["alert_id"] if alert else None,
     }
 
 

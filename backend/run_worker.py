@@ -13,7 +13,13 @@ from app.engine.alert_generator import generate_investigative_alerts
 
 WATCH_DIR = Path("data")
 PROCESSED_LOG = Path(".processed_files.txt")
-IGNORED_FILES = {"ofac_seeds.csv", "scam_seeds.json", ".gitkeep"}
+IGNORED_FILES = {
+    "ofac_seeds.csv",
+    "scam_seeds.json",
+    "ground_truth.csv",
+    "geoip_database.csv",
+    ".gitkeep",
+}
 
 
 def get_processed_files():

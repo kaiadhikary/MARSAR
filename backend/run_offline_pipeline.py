@@ -23,7 +23,9 @@ def main():
                       help="Path to elliptic_txs_*.csv files (default: backend/data/elliptic).")
     cli.add_argument("--elliptic-limit", type=int, default=None,
                       help="Cap Elliptic ingestion to N labelled transactions (for quick tests).")
-    cli.add_argument("--keep-data", action="store_true", help="Do not clear existing transaction data before ingesting.")
+    cli.add_argument("--wipe-db", action="store_true",
+                      help="DESTRUCTIVE: clear transactions/clusters/alerts before ingesting. Off by default.")
+    cli.add_argument("--keep-data", action="store_true", help=argparse.SUPPRESS)
     args = cli.parse_args()
     print("=" * 80)
     print("  MARSAR: BITCOIN P2P TRAFFIC FORENSIC PIPELINE (OFFLINE AIR-GAP RUNNER)")
@@ -31,8 +33,11 @@ def main():
 
     print("\n[+] Stage 1: Initializing Forensic Persistence Layer...")
     init_db()
-    if not args.keep_data:
+    if args.wipe_db:
+        print("      --wipe-db passed: clearing existing transactions/clusters/alerts.")
         reset_database()
+    else:
+        print("      Existing data preserved (pass --wipe-db to clear it instead).")
 
     conn = get_db_connection()
     conn.execute('''

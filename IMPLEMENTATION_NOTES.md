@@ -57,7 +57,7 @@ The backend now supplies the contracts consumed by the bundled frontend:
 - `GET /api/v1/compliance/flagged`
 - `POST /api/v1/export-str`
 
-The login helper now sends the backend's documented `{ "passkey": "..." }`
-payload. The HTML export endpoint returns the dossier as a download and exposes
+The HTML export endpoint returns the dossier as a download and exposes
 the transaction, risk, verdict, SHA-256 evidence hash, and creation time in
-response headers.
+response headers. Authentication is optional (`REQUIRE_AUTH` defaults to false)
+and is not used by the bundled UI.

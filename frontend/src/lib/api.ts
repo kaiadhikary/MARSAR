@@ -63,19 +63,19 @@ async function postJson<T>(path: string, body?: BodyInit, headers?: HeadersInit)
 function mapComplianceTx(row: ComplianceTx, extra?: Partial<TransactionRow>): TransactionRow {
   return {
     txid: row.txid,
-    timestamp: row.created_at || 0,
-    inputs: extra?.inputs ?? 0,
-    outputs: extra?.outputs ?? 0,
-    amount: extra?.amount ?? 0,
-    fee: row.fee_rate ?? extra?.fee ?? 0,
-    risk_score: row.risk_score ?? null,
-    typology: row.typology_flags ?? (row.is_coinjoin ? "CoinJoin" : null),
-    confidence: row.ml_probability ?? null,
-    alert_id: extra?.alert_id ?? null,
-    src_ip: extra?.src_ip ?? "",
-    dst_ip: extra?.dst_ip ?? "",
-    country: extra?.country ?? "",
-    asn: extra?.asn ?? "",
+    timestamp: row.timestamp || row.created_at || extra?.timestamp || 0,
+    inputs: row.inputs ?? extra?.inputs ?? 0,
+    outputs: row.outputs ?? extra?.outputs ?? 0,
+    amount: row.amount ?? extra?.amount ?? 0,
+    fee: row.fee ?? row.fee_rate ?? extra?.fee ?? 0,
+    risk_score: row.risk_score ?? extra?.risk_score ?? null,
+    typology: row.typology_flags ?? extra?.typology ?? (row.is_coinjoin ? "CoinJoin" : null),
+    confidence: row.ml_probability ?? extra?.confidence ?? null,
+    alert_id: row.alert_id ?? extra?.alert_id ?? null,
+    src_ip: row.src_ip || extra?.src_ip || "",
+    dst_ip: row.dst_ip || extra?.dst_ip || "",
+    country: row.country || extra?.country || "",
+    asn: row.asn || extra?.asn || "",
   };
 }
 
@@ -96,9 +96,9 @@ export const api = {
   async transactions(): Promise<ApiResult<{ total: number; transactions: TransactionRow[] }>> {
     const [compliance, alerts, tracesHint] = await Promise.all([
       request<{ recent: ComplianceTx[]; suspicious: ComplianceTx[]; flagged: ComplianceTx[] }>(
-        "/api/v1/compliance/transactions?limit=200"
+        "/api/v1/compliance/transactions?limit=500"
       ),
-      request<{ total: number; alerts: MarsarAlert[] }>("/api/v1/alerts/ranked?limit=200"),
+      request<{ total: number; alerts: MarsarAlert[] }>("/api/v1/alerts/ranked?limit=500"),
       request<{ elements: GraphElements }>("/api/v1/graph/topology?limit_tx=80"),
     ]);
 
@@ -316,20 +316,5 @@ export const api = {
       risk_score: res.headers.get("X-Risk-Score"),
     } satisfies HtmlReport & { html: string; verdict?: string | null; risk_score?: string | null };
   },
-};
-
-/** Legacy graph renderer types (Canvas.tsx / NodeDetails.tsx). */
-export type GraphNode = {
-  id: string;
-  label?: string;
-  is_root?: boolean;
-  is_blacklisted?: boolean;
-  [key: string]: unknown;
-};
-export type GraphEdge = { id: string; source: string; target: string; [key: string]: unknown };
-export type ClusterInfo = ClusterRow & {
-  member_count?: number;
-  first_seen?: number | null;
-  last_updated?: number | null;
 };
 
